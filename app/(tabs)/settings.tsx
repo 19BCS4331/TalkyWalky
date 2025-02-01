@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { MotiView } from 'moti';
 import { useScreenAnimation } from '@/hooks/useScreenAnimation';
 import { useTabBarHeight } from '@/hooks/useTabBarHeight';
+import { supabase } from '@/lib/supabase';
 
 const SettingSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <View style={styles.section}>
@@ -51,6 +52,15 @@ export default function SettingsScreen() {
   const { height: tabBarHeight } = useTabBarHeight();
   const appVersion = '1.0.0';
   const { animationKey } = useScreenAnimation();
+
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.replace('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -100,6 +110,15 @@ export default function SettingsScreen() {
               title="Appearance"
               subtitle="Dark mode and theme settings"
               onPress={() => {/* Handle appearance settings */}}
+            />
+          </SettingSection>
+
+          <SettingSection title="Account">
+            <SettingRow
+              icon="log-out-outline"
+              title="Sign Out"
+              subtitle="Log out of your account"
+              onPress={signOut}
             />
           </SettingSection>
 

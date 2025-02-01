@@ -667,12 +667,6 @@ const ProfileScreen = () => {
         </View>
 
         <View style={styles.content}>
-        <TouchableOpacity
-                    style={styles.signOutButton}
-                    onPress={signOut}
-                  >
-                    <Text style={styles.signOutText}>Sign Out</Text>
-                  </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
