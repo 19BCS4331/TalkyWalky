@@ -3,27 +3,36 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  Dimensions,
-  Platform,
-  ActivityIndicator,
   TouchableOpacity,
+  ScrollView,
+  ImageBackground,
+  Animated,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+  Dimensions,
+  ActivityIndicator,
   TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getProgress, getLanguageStats } from '../../services/progress';
-import { AnimatedCircularProgress } from 'react-native-circular-progress';
-import { MotiView } from 'moti';
+import { getUserStats, getAchievements, getLanguageProgress } from '../../services/gamification';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTabBarHeight } from '@/hooks/useTabBarHeight';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Alert } from 'react-native';
-import { Animated, Easing } from 'react-native';
+
+// Enable LayoutAnimation for Android
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const { width } = Dimensions.get('window');
 
@@ -49,6 +58,28 @@ const ProfileScreen = () => {
     username: '',
     full_name: ''
   });
+  const [userStats, setUserStats] = useState<{
+    total_xp: number;
+    level: number;
+    current_streak: number;
+    longest_streak: number;
+    xp_to_next_level?: number;
+  }>({
+    total_xp: 0,
+    level: 1,
+    current_streak: 0,
+    longest_streak: 0
+  });
+  const [levelConfig, setLevelConfig] = useState<{
+    xp_required: number;
+    next_level_xp?: number;
+  } | null>(null);
+  const [achievements, setAchievements] = useState<any[]>([]);
+  const [allAchievements, setAllAchievements] = useState<any[]>([]);
+  const [languageProgress, setLanguageProgress] = useState<any[]>([]);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showAllAchievements, setShowAllAchievements] = useState(false);
+  const expandAnimation = useRef(new Animated.Value(0)).current;
 
   const scaleValue = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -58,12 +89,20 @@ const ProfileScreen = () => {
   useEffect(() => {
     loadProgress();
     fetchUserProfile();
+    fetchUserStats();
+    fetchAchievements();
+    fetchLanguageProgress();
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       // Reset animation key when screen comes into focus
       setAnimationKey(prev => prev + 1);
+      // Refresh user stats and achievements
+      fetchUserStats();
+      fetchAchievements();
+      loadProgress();
+      fetchLanguageProgress();
     }, [])
   );
 
@@ -132,6 +171,96 @@ const ProfileScreen = () => {
       });
     } catch (error) {
       console.error('Error fetching profile:', error);
+    }
+  };
+
+  const fetchUserStats = async () => {
+    try {
+      const stats = await getUserStats();
+      if (stats) {
+        setUserStats(stats);
+        // Fetch level configuration for current and next level
+        const { data: levelData } = await supabase
+          .from('level_config')
+          .select('*')
+          .or(`level.eq.${stats.level},level.eq.${stats.level + 1}`)
+          .order('level');
+        
+        if (levelData && levelData.length > 0) {
+          const currentLevel = levelData[0];
+          const nextLevel = levelData[1];
+          setLevelConfig({
+            xp_required: currentLevel.xp_required,
+            next_level_xp: nextLevel?.xp_required
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    }
+  };
+
+  const fetchAchievements = async () => {
+    try {
+      const achievementsData = await getAchievements();
+      if (achievementsData && Array.isArray(achievementsData)) {
+        // Split achievements into earned and unearned
+        const earned = achievementsData
+          .filter(achievement => achievement.earned)
+          .map(achievement => ({
+            id: achievement.id,
+            achievement: {
+              id: achievement.id,
+              name: achievement.name,
+              description: achievement.description,
+              icon_name: achievement.icon_name,
+              xp_reward: achievement.xp_reward,
+              requirement_type: achievement.requirement_type,
+              requirement_value: achievement.requirement_value,
+              progress: achievement.progress
+            },
+            earned_at: achievement.earned_at,
+            progress: achievement.progress
+          }));
+
+        const all = achievementsData.map(achievement => ({
+          id: achievement.id,
+          achievement: {
+            id: achievement.id,
+            name: achievement.name,
+            description: achievement.description,
+            icon_name: achievement.icon_name,
+            xp_reward: achievement.xp_reward,
+            requirement_type: achievement.requirement_type,
+            requirement_value: achievement.requirement_value,
+            progress: achievement.progress
+          },
+          earned_at: achievement.earned_at,
+          progress: achievement.progress
+        }));
+
+        setAchievements(earned);
+        setAllAchievements(all);
+      } else {
+        setAchievements([]);
+        setAllAchievements([]);
+      }
+    } catch (error) {
+      console.error('Error fetching achievements:', error);
+      setAchievements([]);
+      setAllAchievements([]);
+    }
+  };
+
+  const fetchLanguageProgress = async () => {
+    try {
+      if (!user?.id) return;
+      const progressData = await getLanguageProgress(user.id);
+      if (progressData) {
+        setLanguageProgress(progressData);
+      }
+    } catch (error) {
+      console.error('Error fetching language progress:', error);
     }
   };
 
@@ -226,6 +355,20 @@ const ProfileScreen = () => {
     });
   };
 
+  const handleToggleExpand = () => {
+    setIsExpanded(!isExpanded);
+    Animated.timing(expandAnimation, {
+      toValue: isExpanded ? 0 : 1,
+      duration: 300,
+      useNativeDriver: true
+    }).start();
+  };
+
+  const arrowRotation = expandAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg']
+  });
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -266,62 +409,195 @@ const ProfileScreen = () => {
                   </TouchableOpacity>
 
                   <View style={styles.profileHeader}>
-                    <Animated.View 
-                      style={[
-                        styles.avatarContainer,
-                        { transform: [{ scale: scaleValue }] }
-                      ]}
-                    >
+                    <View style={styles.avatarContainer}>
                       <LinearGradient
-                        colors={['#FF0080', '#7928CA']}
+                        colors={['#FF416C', '#FF4B2B']}
                         style={styles.avatarGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
                       >
                         <Text style={styles.avatarText}>
-                          {userProfile.full_name 
-                            ? userProfile.full_name.charAt(0).toUpperCase()
-                            : user?.email?.charAt(0).toUpperCase()}
+                          {userProfile.username ? userProfile.username[0].toUpperCase() : 'U'}
                         </Text>
                       </LinearGradient>
-                    </Animated.View>
-
-                    <View style={styles.profileInfo}>
-                      <Text style={styles.profileName}>
-                        {userProfile.full_name || 'Add your name'}
-                      </Text>
-                      <Text style={styles.profileUsername}>
-                        {userProfile.username ? `@${userProfile.username}` : user?.email}
-                      </Text>
+                    </View>
+                    <View style={styles.userInfo}>
+                      <Text style={styles.username}>{userProfile.username || 'User'}</Text>
+                      <Text style={styles.fullName}>{userProfile.full_name || ''}</Text>
                     </View>
                   </View>
 
-                  <View style={styles.statsContainer}>
-                    <Animated.View 
-                      style={[
-                        styles.statsRow,
-                        { 
-                          transform: [{ scale: statsScaleAnim }],
-                          opacity: fadeAnim
-                        }
-                      ]}
+                  <View style={styles.levelContainer}>
+                    <View style={styles.levelHeader}>
+                      <Text style={styles.levelText}>Level {userStats.level}</Text>
+                      <Text style={styles.xpText}>{userStats.total_xp} XP</Text>
+                    </View>
+                    <LinearGradient
+                      colors={['#FF416C', '#FF4B2B']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.xpBar}
                     >
-                      <View style={styles.statItem}>
-                        <Text style={styles.profileStatValue}>0</Text>
-                        <Text style={styles.profileStatLabel}>Streak</Text>
+                      <LinearGradient
+                        style={[
+                          styles.xpProgress, 
+                          { 
+                            width: levelConfig && levelConfig.next_level_xp
+                              ? `${((userStats.total_xp - levelConfig.xp_required) / (levelConfig.next_level_xp - levelConfig.xp_required)) * 100}%` 
+                              : '0%' 
+                          }
+                        ]} 
+                        colors={['#4CAF50', '#8BC34A']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                      />
+                    </LinearGradient>
+                    {levelConfig?.next_level_xp && (
+                      <Text style={styles.xpToNext}>
+                        {levelConfig.next_level_xp - userStats.total_xp} XP to next level
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.streakContainer}>
+                    <View style={styles.streakItem}>
+                      <MaterialCommunityIcons name="fire" size={24} color="#FF416C" />
+                      <Text style={styles.streakCount}>{userStats.current_streak}</Text>
+                      <Text style={styles.streakLabel}>Day Streak</Text>
+                    </View>
+                    <View style={styles.streakItem}>
+                      <MaterialCommunityIcons name="trophy" size={24} color="#FFD700" />
+                      <Text style={styles.streakCount}>{userStats.longest_streak}</Text>
+                      <Text style={styles.streakLabel}>Best Streak</Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity 
+                    style={styles.expandButton} 
+                    onPress={handleToggleExpand}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialCommunityIcons 
+                      name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+                      size={24} 
+                      color="#fff" 
+                    />
+                  </TouchableOpacity>
+
+                  {isExpanded && (
+                    <Animated.View style={[
+                      styles.collapsibleContent,
+                      {
+                        opacity: expandAnimation,
+                        transform: [{
+                          translateY: expandAnimation.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-20, 0]
+                          })
+                        }]
+                      }
+                    ]}>
+                      <View style={styles.languageProgress}>
+                        <Text style={styles.sectionTitle}>Language Progress</Text>
+                        <View style={styles.languageProgressBars}>
+                          {languageProgress.map((progress) => (
+                            <View key={progress.language} style={styles.languageProgressBar}>
+                              <View style={styles.languageProgressHeader}>
+                                <Text style={styles.languageProgressBarTitle}>
+                                  {progress.language}
+                                </Text>
+                                <Text style={styles.languageProgressBarStats}>
+                                  {progress.completedLessons}/{progress.totalLessons} lessons
+                                </Text>
+                              </View>
+                              <View style={styles.languageProgressBarFill}>
+                                <View 
+                                  style={[
+                                    styles.languageProgressBarFillInner, 
+                                    { width: `${progress.progressPercentage}%` }
+                                  ]} 
+                                />
+                                <Text style={styles.progressPercentage}>
+                                  {Math.round(progress.progressPercentage)}%
+                                </Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
                       </View>
-                      <View style={styles.statDivider} />
-                      <View style={styles.statItem}>
-                        <Text style={styles.profileStatValue}>0</Text>
-                        <Text style={styles.profileStatLabel}>XP</Text>
-                      </View>
-                      <View style={styles.statDivider} />
-                      <View style={styles.statItem}>
-                        <Text style={styles.profileStatValue}>0</Text>
-                        <Text style={styles.profileStatLabel}>Level</Text>
+
+                      <View style={styles.achievementsContainer}>
+                        <View style={styles.sectionHeader}>
+                          <Text style={[styles.sectionTitle, { color: 'white',marginBottom: 0 }]}>Achievements</Text>
+                          <TouchableOpacity onPress={() => setShowAllAchievements(!showAllAchievements)}>
+                            <Text style={styles.seeAllText}>{showAllAchievements ? 'Show Earned' : 'See All'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <ScrollView 
+                          horizontal 
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.achievementsScroll}
+                        >
+                          {(showAllAchievements ? allAchievements : achievements.slice(0, 5)).map((achievement) => (
+                            <View key={achievement.id} style={[
+                              styles.achievementItem,
+                              !achievement.earned_at && styles.unachievedItem
+                            ]}>
+                              <LinearGradient
+                                colors={achievement.earned_at ? ['#FF416C', '#FF4B2B'] : ['#666', '#444']}
+                                style={styles.achievementIcon}
+                              >
+                                <MaterialCommunityIcons 
+                                  name={achievement?.achievement?.icon_name || 'trophy'} 
+                                  size={24} 
+                                  color={achievement.earned_at ? '#fff' : 'rgba(255,255,255,0.7)'} 
+                                />
+                              </LinearGradient>
+                              <Text style={[
+                                styles.achievementName,
+                                !achievement.earned_at && styles.unachievedText
+                              ]}>
+                                {achievement?.achievement?.name || 'Achievement'}
+                              </Text>
+                              <Text style={[
+                                styles.achievementDescription,
+                                !achievement.earned_at && styles.unachievedText
+                              ]} numberOfLines={2}>
+                                {achievement?.achievement?.description || 'Complete tasks to earn this achievement'}
+                              </Text>
+                              {!achievement.earned_at && (
+                                <View style={styles.progressBar}>
+                                  <View style={[styles.progressFill, { width: `${achievement.progress}%` }]} />
+                                  <Text style={styles.progressText}>{achievement.progress}%</Text>
+                                </View>
+                              )}
+                              <Text style={[
+                                styles.achievementXP,
+                                !achievement.earned_at && styles.unachievedXP
+                              ]}>
+                                +{achievement?.achievement?.xp_reward || 0} XP
+                              </Text>
+                              <Text style={styles.achievementDate}>
+                                {achievement.earned_at 
+                                  ? new Date(achievement.earned_at).toLocaleDateString()
+                                  : `${achievement?.achievement?.requirement_value} ${achievement?.achievement?.requirement_type.replace(/_/g, ' ')}`
+                                }
+                              </Text>
+                            </View>
+                          ))}
+                          {(showAllAchievements ? allAchievements : achievements).length === 0 && (
+                            <View style={styles.noAchievements}>
+                              <Text style={styles.noAchievementsText}>
+                                Complete lessons to unlock achievements!
+                              </Text>
+                            </View>
+                          )}
+                        </ScrollView>
                       </View>
                     </Animated.View>
-                  </View>
+                  )}
+
+                  
+
+                 
                 </Animated.View>
               ) : (
                 <Animated.View 
@@ -391,107 +667,12 @@ const ProfileScreen = () => {
         </View>
 
         <View style={styles.content}>
-          {/* Stats Overview */}
-          <MotiView
-            from={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: 'spring', delay: 200 }}
-            style={styles.statsOverview}
-          >
-            <View style={styles.statCard}>
-              <Ionicons name="book-outline" size={24} color="#6441A5" />
-              <Text style={styles.statValue}>{progress?.totalLessonsCompleted || 0}</Text>
-              <Text style={styles.statLabel}>Lessons</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="time-outline" size={24} color="#6441A5" />
-              <Text style={styles.statValue}>{formatTime(languageStats?.totalTimeSpent || 0)}</Text>
-              <Text style={styles.statLabel}>Time</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="trending-up-outline" size={24} color="#6441A5" />
-              <Text style={styles.statValue}>{progress?.longestStreak || 0}</Text>
-              <Text style={styles.statLabel}>Best Streak</Text>
-            </View>
-          </MotiView>
-
-          {/* Progress Circle */}
-          {selectedLanguage && languageStats && (
-            <MotiView
-              from={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: 'spring', delay: 400 }}
-              style={styles.progressSection}
-            >
-              <Text style={styles.sectionTitle}>Language Mastery</Text>
-              <View style={styles.progressCircle}>
-                <AnimatedCircularProgress
-                  size={200}
-                  width={15}
-                  fill={languageStats.averageScore}
-                  tintColor="#6441A5"
-                  backgroundColor="rgba(100, 65, 165, 0.1)"
-                  rotation={0}
-                  lineCap="round"
-                  duration={1500}
-                >
-                  {(fill) => (
-                    <View style={styles.progressContent}>
-                      <Text style={styles.progressValue}>{Math.round(fill)}%</Text>
-                      <Text style={styles.progressLabel}>Proficiency</Text>
-                    </View>
-                  )}
-                </AnimatedCircularProgress>
-              </View>
-            </MotiView>
-          )}
-
-          {/* Achievements */}
-          <View style={styles.achievementsSection}>
-            <Text style={styles.sectionTitle}>Achievements</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.achievementsContainer}
-            >
-              {[
-                { icon: '🎯', title: 'First Steps', desc: 'First lesson completed', unlocked: true },
-                { icon: '🔥', title: 'Streak Master', desc: '7 day streak', unlocked: progress?.currentStreak >= 7 },
-                { icon: '⭐', title: 'Perfect Score', desc: 'Get 100% in a lesson', unlocked: false },
-                { icon: '🏆', title: 'Champion', desc: 'Complete all lessons', unlocked: false },
-              ].map((achievement, index) => (
-                <MotiView
-                  key={index}
-                  from={{ opacity: 0, scale: 0.8, translateX: 20 }}
-                  animate={{ opacity: 1, scale: 1, translateX: 0 }}
-                  transition={{
-                    type: 'spring',
-                    delay: 600 + index * 100,
-                    damping: 15,
-                  }}
-                  style={styles.achievementCard}
-                >
-                  <LinearGradient
-                    colors={achievement.unlocked ? ['#6441A5', '#2a0845'] : ['#9e9e9e', '#616161']}
-                    style={styles.achievementGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+        <TouchableOpacity
+                    style={styles.signOutButton}
+                    onPress={signOut}
                   >
-                    <Text style={styles.achievementIcon}>{achievement.icon}</Text>
-                    <Text style={styles.achievementTitle}>{achievement.title}</Text>
-                    <Text style={styles.achievementDesc}>{achievement.desc}</Text>
-                  </LinearGradient>
-                </MotiView>
-              ))}
-            </ScrollView>
-          </View>
-
-          <TouchableOpacity
-            style={styles.signOutButton}
-            onPress={signOut}
-          >
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </TouchableOpacity>
+                    <Text style={styles.signOutText}>Sign Out</Text>
+                  </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -520,7 +701,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    paddingTop: 10
+    paddingTop: 10,
+  
   },
   blurContainer: {
     overflow: 'hidden',
@@ -552,11 +734,11 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
   },
-  profileInfo: {
+  userInfo: {
     flex: 1,
   },
-  profileName: {
-    fontSize: 28,
+  username: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 4,
@@ -564,33 +746,10 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
   },
-  profileUsername: {
+  fullName: {
     fontSize: 16,
     color: 'rgba(255,255,255,0.9)',
     marginBottom: 4,
-  },
-  statsContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginHorizontal: 16,
   },
   editButton: {
     position: 'absolute',
@@ -696,21 +855,6 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  profileStatValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    marginTop: 8,
-    textShadowColor: 'rgba(0,0,0,0.2)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-  },
-  profileStatLabel: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    marginTop: 4,
-    fontWeight: '600',
-  },
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -751,114 +895,190 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   achievementsContainer: {
-    paddingRight: 20,
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 15,
   },
-  achievementCard: {
-    width: width * 0.4,
-    height: 150,
+  achievementsScroll: {
+    paddingVertical: 15,
+    paddingHorizontal: 5,
+  },
+  achievementItem: {
+    width: 200,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 12,
+    padding: 15,
     marginRight: 15,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  achievementGradient: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   achievementIcon: {
-    fontSize: 32,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 10,
   },
-  achievementTitle: {
+  achievementName: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#fff',
     marginBottom: 5,
+  },
+  achievementDescription: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    marginBottom: 10,
+  },
+  achievementXP: {
+    color: '#FFD700',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  achievementDate: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 12,
+    marginTop: 5,
+  },
+  noAchievements: {
+    width: width - 60,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noAchievementsText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 16,
     textAlign: 'center',
   },
-  achievementDesc: {
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  seeAllText: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
+    color: 'pink',
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  section: {
-    backgroundColor: '#fff',
+  levelContainer: {
+    alignSelf: 'center',
+    width:'90%',
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
-  label: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  value: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#333',
-  },
-  buttonContainer: {
+  levelHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
-  },
-  button: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
     alignItems: 'center',
-    marginHorizontal: 4,
+    marginBottom: 8,
   },
-  cancelButton: {
-    backgroundColor: '#f5f5f5',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
+  levelText: {
+    fontSize: 18,
     fontWeight: '600',
+    color: '#fff',
   },
- 
-  editButtons: {
+  xpText: {
+    fontSize: 16,
+    color: '#fff',
+    opacity: 0.8,
+  },
+  xpBar: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  xpProgress: {
+    height: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  streakContainer: {
+    alignSelf: 'center',
+    width:'90%',
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-around',
     marginTop: 20,
+    padding: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
   },
-  editActionButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginLeft: 12,
-    minWidth: 80,
+  streakItem: {
     alignItems: 'center',
   },
-  editButtonText: {
+  streakCount: {
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#fff',
+    marginVertical: 4,
+  },
+  streakLabel: {
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.8,
+  },
+  languageProgress: {
+    alignSelf: 'center',
+    width:'90%',
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  languageProgressBars: {
+    gap: 20,
+  },
+  languageProgressBar: {
+    marginBottom: 4,
+  },
+  languageProgressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  languageProgressBarTitle: {
     fontSize: 16,
+    fontWeight: '500',
+    color: '#1a1a1a',
+  },
+  languageProgressBarStats: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  languageProgressBarFill: {
+    height: 15,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 6,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  languageProgressBarFillInner: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#4CAF50',
+    borderRadius: 6,
+  },
+  progressPercentage: {
+    position: 'absolute',
+    right: 5,
+    top:1,
+    fontSize: 10,
+    color: 'purple',
     fontWeight: '500',
   },
   signOutButton: {
@@ -872,6 +1092,57 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  xpToNext: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  expandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 15,
+    padding: 10,
+  },
+  expandText: {
+    color: '#fff',
+    marginRight: 8,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  collapsibleContent: {
+    overflow: 'hidden',
+    marginTop: 20,
+  },
+  unachievedItem: {
+    opacity: 0.8,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  unachievedText: {
+    color: 'rgba(255, 255, 255, 0.5)',
+  },
+  unachievedXP: {
+    color: 'rgba(255, 215, 0, 0.5)',
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 2,
+    marginVertical: 8,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#FF416C',
+    borderRadius: 2,
+  },
+  progressText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: 'center',
   },
 });
 

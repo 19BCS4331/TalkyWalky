@@ -156,8 +156,22 @@ export default function LessonScreen() {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             await updateUserProgress(user.id, lessonId, true, 100);
+            
+            // Ensure user has stats record
+            const { data: userStats } = await supabase
+              .from('user_stats')
+              .select('id')
+              .eq('id', user.id)
+              .single();
+
+            if (!userStats) {
+              await supabase
+                .from('user_stats')
+                .insert({ id: user.id });
+            }
+
+            setShowComplete(true);
           }
-          setShowComplete(true);
         } catch (error) {
           console.error('Error updating progress:', error);
           Alert.alert('Error', 'Failed to save progress');
@@ -193,6 +207,19 @@ export default function LessonScreen() {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             await updateUserProgress(user.id, lessonId, true, finalScore);
+            
+            // Ensure user has stats record
+            const { data: userStats } = await supabase
+              .from('user_stats')
+              .select('id')
+              .eq('id', user.id)
+              .single();
+
+            if (!userStats) {
+              await supabase
+                .from('user_stats')
+                .insert({ id: user.id });
+            }
           }
           setScore(newScore); // Update score state after the last question
           setShowComplete(true);
