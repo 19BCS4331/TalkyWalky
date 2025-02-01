@@ -1,16 +1,30 @@
-import { Stack } from 'expo-router';
+import { Stack, Slot } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { initializeProgress } from '@/services/progress';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { useRouter, useSegments } from 'expo-router';
 
 function RootLayoutNav() {
-  const { loading } = useAuth();
+  const { user, loading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
   useEffect(() => {
     initializeProgress();
-  }, []);
+    if (!loading) {
+      const inAuthGroup = segments[0] === '(auth)';
+      
+      if (!user && !inAuthGroup) {
+        // Redirect to the sign-in page.
+        router.replace('/(auth)/login');
+      } else if (user && inAuthGroup) {
+        // Redirect away from the sign-in page.
+        router.replace('/(tabs)');
+      }
+    }
+  }, [user, loading, segments]);
 
   if (loading) {
     return (
@@ -20,30 +34,7 @@ function RootLayoutNav() {
     );
   }
 
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="(tabs)"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="(lesson)"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="downloads"
-        options={{
-          headerShown: false,
-          presentation: 'modal',
-        }}
-      />
-    </Stack>
-  );
+  return <Slot />;
 }
 
 export default function RootLayout() {
