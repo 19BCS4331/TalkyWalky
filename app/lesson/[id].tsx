@@ -9,12 +9,16 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  TextInput,
+  Animated
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
+import LottieView from 'lottie-react-native';
 import { getLessonById, updateUserProgress, getLanguageById } from '@/services/database';
+import { getAchievements, getUserStats } from '@/services/gamification';
 import { supabase } from '@/lib/supabase';
 import { textToSpeech } from '@/services/speech';
 import LessonComplete from '@/app/components/LessonComplete';
@@ -45,16 +49,66 @@ export default function LessonScreen() {
   const [mode, setMode] = useState<'phrases' | 'exercises'>('phrases');
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [showComplete, setShowComplete] = useState(false);
+  const [showXPAnimation, setShowXPAnimation] = useState(false);
+  const [showAchievementAnimation, setShowAchievementAnimation] = useState(false);
+  const [earnedXP, setEarnedXP] = useState(0);
+  const [newAchievements, setNewAchievements] = useState<any[]>([]);
+  const [currentAchievementIndex, setCurrentAchievementIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const xpAnimationRef = useRef<LottieView>(null);
+  const achievementAnimationRef = useRef<LottieView>(null);
+  const [xpSound, setXPSound] = useState<Audio.Sound | null>(null);
+  const [achievementSound, setAchievementSound] = useState<Audio.Sound | null>(null);
+  const animationScale = useState(new Animated.Value(1));
+  const [achievementOpacity] = useState(new Animated.Value(0));
 
   useEffect(() => {
     loadLesson();
+    loadSounds();
     return () => {
       if (sound) {
         sound.unloadAsync();
       }
+      unloadSounds();
     };
   }, [lessonId]);
+
+  useEffect(() => {
+    if (showAchievementAnimation && newAchievements && newAchievements.length > 0) {
+      Animated.timing(achievementOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      achievementOpacity.setValue(0);
+    }
+  }, [showAchievementAnimation]);
+
+  useEffect(() => {
+    if (showAchievementAnimation) {
+      const scale = 1 + (currentAchievementIndex * 0.3); // Increase scale by 0.3 for each achievement
+      Animated.spring(animationScale[0], {
+        toValue: scale,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      animationScale[0].setValue(1);
+    }
+  }, [currentAchievementIndex, showAchievementAnimation]);
+
+  useEffect(() => {
+    // Reset achievement-related states when there are no achievements
+    if (!newAchievements || newAchievements.length === 0) {
+      setShowAchievementAnimation(false);
+      setCurrentAchievementIndex(0);
+      if (achievementAnimationRef.current) {
+        achievementAnimationRef.current.reset();
+      }
+    }
+  }, [newAchievements]);
 
   const loadLesson = async () => {
     try {
@@ -70,6 +124,33 @@ export default function LessonScreen() {
     } catch (error) {
       console.error('Error loading lesson:', error);
       setLoading(false);
+    }
+  };
+
+  const loadSounds = async () => {
+    try {
+      const xpSoundObject = new Audio.Sound();
+      await xpSoundObject.loadAsync(require('@/assets/sounds/xp-gain.mp3'));
+      setXPSound(xpSoundObject);
+
+      const achievementSoundObject = new Audio.Sound();
+      await achievementSoundObject.loadAsync(require('@/assets/sounds/achievement-unlock.mp3'));
+      setAchievementSound(achievementSoundObject);
+    } catch (error) {
+      console.error('Error loading sounds:', error);
+    }
+  };
+
+  const unloadSounds = async () => {
+    try {
+      if (xpSound) {
+        await xpSound.unloadAsync();
+      }
+      if (achievementSound) {
+        await achievementSound.unloadAsync();
+      }
+    } catch (error) {
+      console.error('Error unloading sounds:', error);
     }
   };
 
@@ -157,6 +238,9 @@ export default function LessonScreen() {
           if (user) {
             await updateUserProgress(user.id, lessonId, true, 100);
             
+            // Get previous stats for comparison
+            const prevStats = await getUserStats();
+            
             // Ensure user has stats record
             const { data: userStats } = await supabase
               .from('user_stats')
@@ -170,7 +254,37 @@ export default function LessonScreen() {
                 .insert({ id: user.id });
             }
 
-            setShowComplete(true);
+            // Get updated stats and achievements
+            const newStats = await getUserStats();
+            const achievements = await getAchievements();
+            
+            // Calculate XP gained
+            const xpGained = (newStats?.total_xp || 0) - (prevStats?.total_xp || 0);
+            setEarnedXP(xpGained);
+
+            // Find newly unlocked achievements
+            const newlyUnlocked = achievements?.filter(a => 
+              a.earned && 
+              new Date(a.earned_at).getTime() > new Date(prevStats?.updated_at || 0).getTime()
+            ) || [];
+            setNewAchievements(newlyUnlocked);
+
+            // Show XP animation first, then achievements if any
+            if (xpGained > 0) {
+              setShowXPAnimation(true);
+              playXPSound();
+              if (xpAnimationRef.current) {
+                xpAnimationRef.current.play();
+              }
+            } else if (newlyUnlocked.length > 0) {
+              setShowAchievementAnimation(true);
+              playAchievementSound();
+              if (achievementAnimationRef.current) {
+                achievementAnimationRef.current.play();
+              }
+            } else {
+              setShowComplete(true);
+            }
           }
         } catch (error) {
           console.error('Error updating progress:', error);
@@ -206,6 +320,9 @@ export default function LessonScreen() {
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
+            // Get previous stats for comparison
+            const prevStats = await getUserStats();
+            
             await updateUserProgress(user.id, lessonId, true, finalScore);
             
             // Ensure user has stats record
@@ -220,9 +337,41 @@ export default function LessonScreen() {
                 .from('user_stats')
                 .insert({ id: user.id });
             }
+
+            // Get updated stats and achievements
+            const newStats = await getUserStats();
+            const achievements = await getAchievements();
+            
+            // Calculate XP gained
+            const xpGained = (newStats?.total_xp || 0) - (prevStats?.total_xp || 0);
+            setEarnedXP(xpGained);
+
+            // Find newly unlocked achievements
+            const newlyUnlocked = achievements?.filter(a => 
+              a.earned && 
+              new Date(a.earned_at).getTime() > new Date(prevStats?.updated_at || 0).getTime()
+            ) || [];
+            setNewAchievements(newlyUnlocked);
+
+            setScore(newScore); // Update score state after the last question
+
+            // Show XP animation first, then achievements if any
+            if (xpGained > 0) {
+              setShowXPAnimation(true);
+              playXPSound();
+              if (xpAnimationRef.current) {
+                xpAnimationRef.current.play();
+              }
+            } else if (newlyUnlocked.length > 0) {
+              setShowAchievementAnimation(true);
+              playAchievementSound();
+              if (achievementAnimationRef.current) {
+                achievementAnimationRef.current.play();
+              }
+            } else {
+              setShowComplete(true);
+            }
           }
-          setScore(newScore); // Update score state after the last question
-          setShowComplete(true);
         } catch (error) {
           console.error('Error updating progress:', error);
           Alert.alert('Error', 'Failed to save progress');
@@ -366,41 +515,50 @@ export default function LessonScreen() {
     return (
       <View style={styles.exerciseContainer}>
         <Text style={styles.questionText}>{exercise.question}</Text>
-        <View style={styles.optionsContainer}>
-          {exercise.options?.map((option: ExerciseOption, index: number) => {
-            const isSelected = selectedAnswer === option.option_text;
-            const isCorrect = isAnswerChecked && option.option_text === exercise.correct_answer;
-            const isWrong = isAnswerChecked && isSelected && !isCorrect;
+        {exercise.type === 'translation' ? (
+          <TextInput
+            style={styles.inputField}
+            onChangeText={setSelectedAnswer}
+            value={selectedAnswer || ''}
+            placeholder="Type your answer here"
+          />
+        ) : (
+          <View style={styles.optionsContainer}>
+            {exercise.options?.map((option: ExerciseOption, index: number) => {
+              const isSelected = selectedAnswer === option.option_text;
+              const isCorrect = isAnswerChecked && option.option_text === exercise.correct_answer;
+              const isWrong = isAnswerChecked && isSelected && !isCorrect;
 
-            return (
-              <TouchableOpacity
-                key={option.id || index}
-                style={[
-                  styles.optionButton,
-                  isSelected && !isAnswerChecked && { borderColor: '#2196F3' },
-                  isAnswerChecked && {
-                    borderColor: isCorrect ? '#4CAF50' : '#f44336',
-                    backgroundColor: isCorrect ? '#4CAF5020' : '#f4433620',
-                  },
-                ]}
-                onPress={() => handleAnswerSelect(option.option_text)}
-                disabled={isAnswerChecked}
-              >
-                <Text
+              return (
+                <TouchableOpacity
+                  key={option.id || index}
                   style={[
-                    styles.optionText,
-                    isSelected && !isAnswerChecked && { color: '#2196F3' },
+                    styles.optionButton,
+                    isSelected && !isAnswerChecked && { borderColor: '#2196F3' },
                     isAnswerChecked && {
-                      color: isCorrect ? '#4CAF50' : '#f44336',
+                      borderColor: isCorrect ? '#4CAF50' : '#f44336',
+                      backgroundColor: isCorrect ? '#4CAF5020' : '#f4433620',
                     },
                   ]}
+                  onPress={() => handleAnswerSelect(option.option_text)}
+                  disabled={isAnswerChecked}
                 >
-                  {option.option_text}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      isSelected && !isAnswerChecked && { color: '#2196F3' },
+                      isAnswerChecked && {
+                        color: isCorrect ? '#4CAF50' : '#f44336',
+                      },
+                    ]}
+                  >
+                    {option.option_text}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
         {isAnswerChecked && (
           <View style={styles.feedbackContainer}>
             <Text style={[
@@ -416,6 +574,109 @@ export default function LessonScreen() {
         )}
       </View>
     );
+  };
+
+  const renderXPAnimation = () => (
+    <View style={StyleSheet.absoluteFill}>
+      <View style={styles.modalContainer}>
+        <View style={styles.xpAnimationContainer}>
+          <LottieView
+            ref={xpAnimationRef}
+            source={require('@/assets/animations/xp-gain.json')}
+            autoPlay={true}
+            speed={2}
+            loop={false}
+            style={styles.xpAnimation}
+            onAnimationFinish={() => {
+              setShowXPAnimation(false);
+              if (newAchievements && newAchievements.length > 0) {
+                // Ensure previous states are cleared
+                achievementAnimationRef.current?.reset();
+                setCurrentAchievementIndex(0);
+                
+                // Delay showing achievement
+                setTimeout(() => {
+                  setShowAchievementAnimation(true);
+                  playAchievementSound();
+                  if (achievementAnimationRef.current) {
+                    achievementAnimationRef.current.play();
+                  }
+                }, 100);
+              } else {
+                setShowComplete(true);
+              }
+            }}
+          />
+          <Text style={styles.xpText}>+{earnedXP} XP</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderAchievementAnimation = () => {
+    if (!showAchievementAnimation || !newAchievements?.length) return null;
+
+    return (
+      <View style={StyleSheet.absoluteFill}>
+        <Animated.View style={[
+          styles.modalContainer,
+          { opacity: achievementOpacity }
+        ]}>
+          <Animated.View style={[
+            styles.achievementAnimationContainer,
+            {
+              transform: [{ scale: animationScale[0] }]
+            }
+          ]}>
+            <LottieView
+              ref={achievementAnimationRef}
+              source={require('@/assets/animations/achievement-unlock.json')}
+              autoPlay={true}
+              loop={false}
+              style={styles.achievementAnimation}
+              onAnimationFinish={() => {
+                if (currentAchievementIndex < newAchievements.length - 1) {
+                  setCurrentAchievementIndex(prev => prev + 1);
+                  playAchievementSound();
+                  if (achievementAnimationRef.current) {
+                    achievementAnimationRef.current.reset();
+                    achievementAnimationRef.current.play();
+                  }
+                } else {
+                  setShowAchievementAnimation(false);
+                  setShowComplete(true);
+                }
+              }}
+            />
+            <View style={styles.achievementContent}>
+              <Text style={styles.achievementTitle}>Achievement Unlocked!</Text>
+              <Text style={styles.achievementName}>{newAchievements[currentAchievementIndex]?.name}</Text>
+              <Text style={styles.achievementXP}>+{newAchievements[currentAchievementIndex]?.xp_reward} XP</Text>
+            </View>
+          </Animated.View>
+        </Animated.View>
+      </View>
+    );
+  };
+
+  const playXPSound = async () => {
+    try {
+      if (xpSound) {
+        await xpSound.replayAsync();
+      }
+    } catch (error) {
+      console.error('Error playing XP sound:', error);
+    }
+  };
+
+  const playAchievementSound = async () => {
+    try {
+      if (achievementSound) {
+        await achievementSound.replayAsync();
+      }
+    } catch (error) {
+      console.error('Error playing achievement sound:', error);
+    }
   };
 
   if (loading || !lesson) {
@@ -459,7 +720,10 @@ export default function LessonScreen() {
         >
           <LinearGradient
             colors={[language?.color_primary || '#4CAF50', language?.color_secondary || '#81C784']}
-            style={[styles.nextButtonGradient, (mode === 'exercises' && selectedAnswer === null) && styles.nextButtonDisabled]}
+            style={[
+              styles.nextButtonGradient,
+              (mode === 'exercises' && selectedAnswer === null) && styles.nextButtonDisabled
+            ]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
@@ -474,6 +738,8 @@ export default function LessonScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+      {showXPAnimation && renderXPAnimation()}
+      {showAchievementAnimation && newAchievements?.length > 0 ? renderAchievementAnimation() : null}
     </SafeAreaView>
   );
 }
@@ -485,6 +751,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    padding: 15,
   },
   contentContainer: {
     flexGrow: 1,
@@ -648,6 +915,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+    marginTop: 16,
   },
   questionText: {
     fontSize: 22,
@@ -712,5 +980,81 @@ const styles = StyleSheet.create({
   },
   nextButtonDisabled: {
     opacity: 0.5,
+  },
+  inputField: {
+    width: '100%',
+    height: 40,
+    borderColor: '#404040',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    color: '#fff',
+    backgroundColor: '#2a2a2a',
+  },
+  modalContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  xpAnimationContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 300,
+    height: 300,
+  },
+  xpAnimation: {
+    width: 300,
+    height: 300,
+  },
+  xpText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 3,
+  },
+  achievementAnimationContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 250,
+    height: 330, // Height includes space for text
+  },
+  achievementAnimation: {
+    width: 250,
+    height: 250,
+  },
+  achievementContent: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  achievementTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 3,
+  },
+  achievementName: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    marginTop: 8,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  achievementXP: {
+    fontSize: 18,
+    color: '#FFD700',
+    marginTop: 4,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
 });

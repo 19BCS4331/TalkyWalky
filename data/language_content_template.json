@@ -1,0 +1,143 @@
+[
+  {
+    "code": "es",
+    "categories": [
+      {
+        "name": "Basics",
+        "difficulty": "Beginner",
+        "lessons": [
+          {
+            "title": "Basic Greetings",
+            "description": "Learn essential Spanish greetings",
+            "phrases": [
+              {
+                "original": "¡Hola, ¿cómo estás?",
+                "translated": "Hello, how are you?",
+                "pronunciation": "OH-lah, KOH-moh ehs-TAHS"
+              },
+              {
+                "original": "Me llamo...",
+                "translated": "My name is...",
+                "pronunciation": "meh YAH-moh"
+              },
+              {
+                "original": "Mucho gusto",
+                "translated": "Nice to meet you",
+                "pronunciation": "MOO-choh GOOS-toh"
+              }
+            ]
+          },
+          {
+            "title": "Numbers 1-100",
+            "description": "Master counting in Spanish",
+            "phrases": [
+              {
+                "original": "Uno, dos, tres",
+                "translated": "One, two, three",
+                "pronunciation": "OO-noh, dohs, trehs"
+              },
+              {
+                "original": "¿Cuántos?",
+                "translated": "How many?",
+                "pronunciation": "KWAN-tohs"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Daily Life",
+        "difficulty": "Beginner",
+        "lessons": [
+          {
+            "title": "Food and Dining",
+            "description": "Learn how to order food and express preferences",
+            "phrases": [
+              {
+                "original": "Me gustaría...",
+                "translated": "I would like...",
+                "pronunciation": "meh goos-tah-REE-ah"
+              },
+              {
+                "original": "La cuenta, por favor",
+                "translated": "The bill, please",
+                "pronunciation": "lah KWEN-tah, pohr fah-VOHR"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Travel",
+        "difficulty": "Intermediate",
+        "lessons": [
+          {
+            "title": "Directions",
+            "description": "Learn to ask for and give directions",
+            "phrases": [
+              {
+                "original": "¿Dónde está el/la...?",
+                "translated": "Where is the...?",
+                "pronunciation": "DOHN-deh ehs-TAH ehl/lah"
+              },
+              {
+                "original": "Gire a la derecha/izquierda",
+                "translated": "Turn right/left",
+                "pronunciation": "HEE-reh ah lah deh-REH-chah/eez-kee-EHR-dah"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "code": "fr",
+    "categories": [
+      {
+        "name": "Basics",
+        "difficulty": "Beginner",
+        "lessons": [
+          {
+            "title": "Essential Phrases",
+            "description": "Learn the most common French expressions",
+            "phrases": [
+              {
+                "original": "Bonjour",
+                "translated": "Hello (formal)",
+                "pronunciation": "bohn-ZHOOR"
+              },
+              {
+                "original": "Comment allez-vous?",
+                "translated": "How are you?",
+                "pronunciation": "koh-mahn tah-lay-VOO"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Culture",
+        "difficulty": "Intermediate",
+        "lessons": [
+          {
+            "title": "At the Café",
+            "description": "Master ordering at French cafés",
+            "phrases": [
+              {
+                "original": "Un café, s'il vous plaît",
+                "translated": "A coffee, please",
+                "pronunciation": "uhn ka-FAY, seel voo PLEH"
+              },
+              {
+                "original": "La carte, s'il vous plaît",
+                "translated": "The menu, please",
+                "pronunciation": "lah KART, seel voo PLEH"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

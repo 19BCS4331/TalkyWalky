@@ -19,8 +19,8 @@ export const getUserStats = async () => {
           total_xp: 0,
           current_streak: 0,
           longest_streak: 0,
-          lessons_completed: 0,
-          perfect_lessons: 0
+          // lessons_completed: 0,
+          // perfect_lessons: 0
         };
 
         const { data: newStats, error: insertError } = await supabase
