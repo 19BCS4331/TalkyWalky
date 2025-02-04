@@ -2,8 +2,11 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
+import * as dotenv from 'dotenv';
 
-const OPENAI_API_KEY = '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';
+dotenv.config();
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // Supabase configuration
 const SUPABASE_URL = 'https://oieoxgngqydvjzbyfrav.supabase.co';

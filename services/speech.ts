@@ -1,11 +1,11 @@
 import * as FileSystem from 'expo-file-system';
 import { Base64 } from 'js-base64';
-import Constants from 'expo-constants';
+import ENV from './env';
 import * as Crypto from 'expo-crypto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = 'https://api.elevenlabs.io/v1';
-const ELEVENLABS_API_KEY = Constants.expoConfig?.extra?.elevenLabsApiKey;
+const ELEVENLABS_API_KEY = ENV.ELEVENLABS_API_KEY;
 
 // Create a cache directory
 const CACHE_DIR = `${FileSystem.cacheDirectory}audio_cache/`;

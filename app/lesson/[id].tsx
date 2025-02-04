@@ -380,6 +380,14 @@ export default function LessonScreen() {
     }
   };
 
+  const handlePrevious = () => {
+    if (currentPhrase > 0) {
+      setCurrentPhrase(prev => prev - 1);
+      setShowTranslation(false);
+      scrollViewRef.current?.scrollTo({ x: 0, y: 0, animated: true });
+    }
+  };
+
   const getFeedbackMessage = (score: number) => {
     if (score === 100) return "Perfect! You're a natural! 🌟";
     if (score >= 80) return "Great job! Keep up the good work! 👏";
@@ -449,15 +457,19 @@ export default function LessonScreen() {
 
     return (
       <View style={styles.phraseContainer}>
-        <View style={styles.phraseCard}>
+        <TouchableOpacity 
+          style={styles.phraseTextContainer} 
+          onPress={() => playAudio(phrase.original_text)}
+          activeOpacity={0.7}
+        >
           <Text style={styles.phraseText}>{phrase.original_text}</Text>
-          {showTranslation && (
-            <Text style={styles.translationText}>{phrase.translated_text}</Text>
-          )}
-          {phrase.pronunciation && (
-            <Text style={styles.pronunciationText}>{phrase.pronunciation}</Text>
-          )}
-        </View>
+        </TouchableOpacity>
+        {showTranslation && (
+          <Text style={styles.translationText}>{phrase.translated_text}</Text>
+        )}
+        {phrase.pronunciation && (
+          <Text style={styles.pronunciationText}>{phrase.pronunciation}</Text>
+        )}
         
         <View style={styles.actionButtons}>
           <TouchableOpacity
@@ -712,29 +724,59 @@ export default function LessonScreen() {
       >
         {mode === 'phrases' ? renderPhrase() : renderExercise()}
       </ScrollView>
-      <View style={styles.footer}>
+      <View style={styles.buttonContainer}>
+        {mode === 'phrases' && (
+          <TouchableOpacity
+            onPress={handlePrevious}
+            disabled={currentPhrase === 0}
+            style={styles.navigationButton}
+          >
+            <LinearGradient
+              colors={[language?.color_primary || '#4CAF50', language?.color_secondary || '#81C784']}
+              style={[
+                styles.navigationButtonGradient,
+                currentPhrase === 0 && styles.nextButtonDisabled
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <View style={styles.buttonContent}>
+                <Ionicons 
+                  name="arrow-back"
+                  size={20}
+                  color="#fff"
+                  style={styles.buttonIcon}
+                />
+                <Text style={styles.navigationButtonText}>Previous</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
-          style={styles.nextButton}
           onPress={handleNext}
           disabled={mode === 'exercises' && selectedAnswer === null}
+          style={styles.navigationButton}
         >
           <LinearGradient
             colors={[language?.color_primary || '#4CAF50', language?.color_secondary || '#81C784']}
             style={[
-              styles.nextButtonGradient,
+              styles.navigationButtonGradient,
               (mode === 'exercises' && selectedAnswer === null) && styles.nextButtonDisabled
             ]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.nextButtonText}>
-              {mode === 'exercises' && !isAnswerChecked ? 'Check Answer' : 'Next'}
-            </Text>
-            <Ionicons 
-              name={mode === 'exercises' && !isAnswerChecked ? "checkmark" : "arrow-forward"}
-              size={20}
-              color="#fff"
-            />
+            <View style={styles.buttonContent}>
+              <Text style={styles.navigationButtonText}>
+                {mode === 'exercises' && !isAnswerChecked ? 'Check Answer' : 'Next'}
+              </Text>
+              <Ionicons 
+                name={mode === 'exercises' && !isAnswerChecked ? "checkmark" : "arrow-forward"}
+                size={20}
+                color="#fff"
+                style={styles.buttonIcon}
+              />
+            </View>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -808,10 +850,8 @@ const styles = StyleSheet.create({
   },
   phraseContainer: {
     marginVertical: 16,
-    width:'90%',
+    width:'100%',
     alignSelf: 'center',
-  },
-  phraseCard: {
     backgroundColor: '#2a2a2a',
     borderRadius: 16,
     padding: 20,
@@ -821,6 +861,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+  },
+  phraseTextContainer: {
+    alignSelf: 'flex-start',
   },
   phraseText: {
     fontSize: 24,
@@ -852,7 +895,7 @@ const styles = StyleSheet.create({
   },
   audioButtonGradient: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 30,
     alignItems: 'center',
   },
   translationButton: {
@@ -860,13 +903,34 @@ const styles = StyleSheet.create({
   },
   translationButtonGradient: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 30,
     alignItems: 'center',
   },
   translationButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 20,
+    paddingHorizontal: 20,
+  },
+  navigationButton: {
+    flex: 1,
+    maxWidth: 200,
+  },
+  navigationButtonGradient: {
+    borderRadius: 25,
+    padding: 15,
+  },
+  navigationButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   footer: {
     padding: 16,
@@ -1056,5 +1120,14 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  buttonIcon: {
+    marginTop: 1, // Small adjustment to align with text
   },
 });

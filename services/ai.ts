@@ -1,4 +1,6 @@
-import { OPENAI_API_KEY } from '@/config/api';
+import ENV from "./env";
+
+const OPENAI_API_KEY = ENV.OPENAI_API_KEY;
 
 interface Message {
   role: 'system' | 'user' | 'assistant';

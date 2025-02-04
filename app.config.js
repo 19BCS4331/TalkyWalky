@@ -30,11 +30,9 @@ export default {
       bundler: "metro",
       favicon: "./assets/images/favicon.png"
     },
-    plugins: [
-      "expo-router"
-    ],
     extra: {
-      elevenLabsApiKey: process.env.ELEVENLABS_API_KEY,
+      ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY || "",
+      OPENAI_API_KEY:process.env.OPENAI_API_KEY || "",
       eas: {
         projectId: "your-project-id"
       }
