@@ -27,6 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Alert } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { fonts } from '@/constants/fonts';
 
 // Enable LayoutAnimation for Android
 if (
@@ -435,7 +436,7 @@ const ProfileScreen = () => {
                       colors={[colors.gradientStart, colors.gradientEnd]}
                       style={styles.avatarGradient}
                     >
-                      <Text style={[styles.avatarText, { color: '#fff' }]}>
+                      <Text style={[styles.avatarText, { color: '#fff', fontFamily: fonts.bold }]}>
                         {userProfile.full_name?.[0]?.toUpperCase() || userProfile.username?.[0]?.toUpperCase() || '?'}
                       </Text>
                     </LinearGradient>
@@ -451,29 +452,29 @@ const ProfileScreen = () => {
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
-                  <Text style={[styles.userName, { color: 'white' }]}>
+                  <Text style={[styles.userName, { color: 'white', fontFamily: fonts.bold }]}>
                     {userProfile.full_name || userProfile.username || 'User'}
                   </Text>
                   <View style={styles.statsRow}>
                     <View style={styles.statItem}>
-                      <Text style={[styles.statValue, { color: 'white' }]}>{userStats.level}</Text>
-                      <Text style={[styles.statLabel, { color: 'white' }]}>Level</Text>
+                      <Text style={[styles.statValue, { color: 'white', fontFamily: fonts.bold }]}>{userStats.level}</Text>
+                      <Text style={[styles.statLabel, { color: 'white', fontFamily: fonts.medium }]} numberOfLines={1}>Level</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                      <Text style={[styles.statValue, { color: 'white' }]}>{userStats.total_xp}</Text>
-                      <Text style={[styles.statLabel, { color: 'white' }]}>Total XP</Text>
+                      <Text style={[styles.statValue, { color: 'white', fontFamily: fonts.bold }]}>{userStats.total_xp}</Text>
+                      <Text style={[styles.statLabel, { color: 'white', fontFamily: fonts.medium }]} numberOfLines={1}>Total XP</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                      <Text style={[styles.statValue, { color: 'white' }]}>{userStats.current_streak}</Text>
-                      <Text style={[styles.statLabel, { color: 'white' }]}>Day Streak</Text>
+                      <Text style={[styles.statValue, { color: 'white', fontFamily: fonts.bold }]}>{userStats.current_streak}</Text>
+                      <Text style={[styles.statLabel, { color: 'white', fontFamily: fonts.medium }]} numberOfLines={1}>Day Streak</Text>
                     </View>
                   </View>
                 </Animated.View>
               ) : (
                 <Animated.View style={[styles.editForm, { opacity: formFadeAnim }]}>
-                  <Text style={[styles.editTitle, { color: 'white' }]}>Edit Profile</Text>
+                  <Text style={[styles.editTitle, { color: 'white', fontFamily: fonts.bold }]} numberOfLines={1}>Edit Profile</Text>
                   <TextInput
                     style={styles.input}
                     placeholder="Full Name"
@@ -490,10 +491,10 @@ const ProfileScreen = () => {
                   />
                   <View style={styles.editButtons}>
                     <TouchableOpacity style={styles.cancelButton} onPress={handleCancelEdit}>
-                      <Text style={[styles.buttonText, { color: 'white' }]}>Cancel</Text>
+                      <Text style={[styles.buttonText, { color: 'white', fontFamily: fonts.medium }]} numberOfLines={1}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.saveButton} onPress={handleUpdateProfile}>
-                      <Text style={[styles.buttonText, { color: 'white' }]}>Save</Text>
+                      <Text style={[styles.buttonText, { color: 'white', fontFamily: fonts.medium }]} numberOfLines={1}>Save</Text>
                     </TouchableOpacity>
                   </View>
                 </Animated.View>
@@ -505,10 +506,10 @@ const ProfileScreen = () => {
         {/* Level Progress */}
         <View style={[styles.levelProgressContainer,{backgroundColor: colors.surface}]}>
           <View style={styles.levelProgressHeader}>
-            <Text style={[styles.levelProgressTitle, { color: colors.text }]}>
+            <Text style={[styles.levelProgressTitle, { color: colors.text, fontFamily: fonts.bold }]} numberOfLines={1}>
               Level {userStats.level}
             </Text>
-            <Text style={[styles.levelProgressXP, { color: colors.textSecondary }]}>
+            <Text style={[styles.levelProgressXP, { color: colors.textSecondary, fontFamily: fonts.medium }]} numberOfLines={1}>
               {userStats.total_xp % (levelConfig?.xp_required || 1000)}/{levelConfig?.next_level_xp || 1000} XP
             </Text>
           </View>
@@ -528,7 +529,7 @@ const ProfileScreen = () => {
         {/* Language Progress */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Language Progress</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: fonts.semiBold }]} numberOfLines={1}>Language Progress</Text>
           </View>
           <View style={[styles.languageCards]}>
             {languageProgress.map((progress) => (
@@ -538,8 +539,8 @@ const ProfileScreen = () => {
                 style={styles.languageCard}
               >
                 <View style={styles.languageCardHeader}>
-                  <Text style={[styles.languageTitle, { color: colors.text }]}>{progress.language}</Text>
-                  <Text style={[styles.lessonCount, { color: colors.textSecondary }]}>
+                  <Text style={[styles.languageTitle, { color: colors.text, fontFamily: fonts.bold }]} numberOfLines={1}>{progress.language}</Text>
+                  <Text style={[styles.lessonCount, { color: colors.textSecondary, fontFamily: fonts.medium }]} numberOfLines={1}>
                     {progress.completedLessons}/{progress.totalLessons} lessons
                   </Text>
                 </View>
@@ -554,7 +555,7 @@ const ProfileScreen = () => {
                     ]}
                   />
                 </View>
-                <Text style={[styles.progressPercentage, { color: colors.textSecondary }]}>
+                <Text style={[styles.progressPercentage, { color: colors.textSecondary, fontFamily: fonts.medium }]} numberOfLines={1}>
                   {Math.round(progress.progressPercentage)}% Complete
                 </Text>
               </LinearGradient>
@@ -565,12 +566,12 @@ const ProfileScreen = () => {
         {/* Achievements */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Achievements</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: fonts.semiBold }]} numberOfLines={1}>Achievements</Text>
             <TouchableOpacity 
               style={styles.toggleButton}
               onPress={() => setShowAllAchievements(!showAllAchievements)}
             >
-              <Text style={[styles.toggleButtonText, { color: colors.text }]}>
+              <Text style={[styles.toggleButtonText, { color: colors.text, fontFamily: fonts.medium }]} numberOfLines={1}>
                 {showAllAchievements ? 'Show Earned' : 'See All'}
               </Text>
             </TouchableOpacity>
@@ -612,14 +613,14 @@ const ProfileScreen = () => {
                     <Text style={[
                       styles.achievementName,
                       !achievement.earned_at && styles.unachievedText,
-                      { color: colors.text }
-                    ]}>
+                      { color: colors.text, fontFamily: fonts.semiBold }
+                    ]} numberOfLines={1}>
                       {achievement?.achievement?.name || 'Achievement'}
                     </Text>
                     <Text style={[
                       styles.achievementDescription,
                       !achievement.earned_at && styles.unachievedText,
-                      { color: colors.textSecondary }
+                      { color: colors.textSecondary, fontFamily: fonts.regular }
                     ]} numberOfLines={2}>
                       {achievement?.achievement?.description || 'Complete tasks to earn this achievement'}
                     </Text>
@@ -636,7 +637,10 @@ const ProfileScreen = () => {
                             ]}
                           />
                         </View>
-                        <Text style={[styles.achievementProgressText, { color: colors.textSecondary }]}>
+                        <Text style={[
+                          styles.achievementProgressText,
+                          { color: colors.textSecondary, fontFamily: fonts.medium }
+                        ]} numberOfLines={1}>
                           {achievement.progress}% Complete
                         </Text>
                       </View>
@@ -644,15 +648,15 @@ const ProfileScreen = () => {
                     <Text style={[
                       styles.achievementXP,
                       !achievement.earned_at && styles.unachievedText,
-                      { color: colors.text }
-                    ]}>
+                      { color: colors.text, fontFamily: fonts.bold }
+                    ]} numberOfLines={1}>
                       +{achievement?.achievement?.xp_reward || 0} XP
                     </Text>
                     <Text style={[
                       styles.achievementDate,
                       !achievement.earned_at && styles.unachievedText,
-                      { color: colors.textSecondary }
-                    ]}>
+                      { color: colors.textSecondary, fontFamily: fonts.medium }
+                    ]} numberOfLines={1}>
                       {achievement.earned_at 
                         ? new Date(achievement.earned_at).toLocaleDateString()
                         : `${achievement?.achievement?.requirement_value} ${achievement?.achievement?.requirement_type.replace(/_/g, ' ')}`
@@ -672,7 +676,6 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
   },
   scrollView: {
     flex: 1,
@@ -921,7 +924,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   achievementProgress: {
-    marginBottom: 12,
+    marginTop: 10,
   },
   achievementProgressText: {
     fontSize: 12,

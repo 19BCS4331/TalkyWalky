@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLanguages, Language } from '@/services/database';
 import { useTabBarHeight } from '@/hooks/useTabBarHeight';
 import { useTheme } from '../../context/ThemeContext';
+import { fonts } from '@/constants/fonts';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width / 2 - 30;
@@ -76,8 +77,8 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>TalkyWalky</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Learn a new language today</Text>
+        <Text style={[styles.title, { color: colors.text, fontFamily: fonts.bold, fontSize: 32, fontWeight: 'bold' }]}>TalkyWalky</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: fonts.regular, fontSize: 16, opacity: 0.7, marginBottom: 20 }]}>Learn a new language today</Text>
       </View>
 
       <View style={styles.searchContainer}>
@@ -103,7 +104,7 @@ export default function HomeScreen() {
         >
           <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
           <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
+            style={[styles.searchInput, { color: colors.text, fontFamily: fonts.regular, fontSize: 16 }]}
             placeholder="Search languages..."
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -117,16 +118,16 @@ export default function HomeScreen() {
       {isLoading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading languages...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary, fontFamily: fonts.medium, fontSize: 16, marginTop: 10 }]}>Loading languages...</Text>
         </View>
       ) : error ? (
         <View style={styles.centerContainer}>
-          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+          <Text style={[styles.errorText, { color: colors.error, fontFamily: fonts.medium, fontSize: 16, textAlign: 'center', marginTop: 20 }]}>Error loading languages</Text>
           <TouchableOpacity 
             style={[styles.retryButton, { backgroundColor: colors.surface }]} 
             onPress={loadLanguages}
           >
-            <Text style={[styles.retryText, { color: colors.text }]}>Retry</Text>
+            <Text style={[styles.retryText, { color: colors.text, fontFamily: fonts.medium, fontSize: 16 }]}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -150,20 +151,20 @@ export default function HomeScreen() {
                 >
                   <View style={styles.cardContent}>
                     <View>
-                      <Text style={[styles.languageName, { color: '#fff' }]}>{lang.name}</Text>
-                      <Text style={[styles.nativeName, { color: 'rgba(255,255,255,0.8)' }]}>{lang.native_name}</Text>
+                      <Text style={[styles.languageName, { color: '#fff', fontFamily: fonts.bold, fontSize: 20 }]}>{lang.name}</Text>
+                      <Text style={[styles.nativeName, { color: 'rgba(255,255,255,0.8)', fontFamily: fonts.regular, fontSize: 14, marginTop: 2 }]}>{lang.native_name}</Text>
                       <View style={[styles.difficultyBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                        <Text style={[styles.difficultyText, { color: '#fff' }]}>{lang.difficulty}</Text>
+                        <Text style={[styles.difficultyText, { color: '#fff', fontFamily: fonts.medium, fontSize: 12 }]}>{lang.difficulty}</Text>
                       </View>
                     </View>
                     <View style={styles.statsContainer}>
                       <View style={styles.stat}>
-                        <Text style={[styles.statValue, { color: '#fff' }]}>{lang.total_lessons}</Text>
-                        <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.8)' }]}>Lessons</Text>
+                        <Text style={[styles.statValue, { color: '#fff', fontFamily: fonts.bold, fontSize: 18 }]}>{lang.total_lessons}</Text>
+                        <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.8)', fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }]}>Lessons</Text>
                       </View>
                       <View style={styles.stat}>
-                        <Text style={[styles.statValue, { color: '#fff' }]}>{lang.total_words}</Text>
-                        <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.8)' }]}>Words</Text>
+                        <Text style={[styles.statValue, { color: '#fff', fontFamily: fonts.bold, fontSize: 18 }]}>{lang.total_words}</Text>
+                        <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.8)', fontFamily: fonts.regular, fontSize: 12, marginTop: 2 }]}>Words</Text>
                       </View>
                     </View>
                   </View>
