@@ -664,17 +664,6 @@ const ProfileScreen = () => {
             ))}
           </ScrollView>
         </View>
-
-        <TouchableOpacity
-          style={[styles.themeToggle, { backgroundColor: colors.surface }]}
-          onPress={toggleTheme}
-        >
-          <MaterialCommunityIcons 
-            name={theme === 'dark' ? 'weather-sunny' : 'weather-night'} 
-            size={24} 
-            color={colors.text} 
-          />
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -977,18 +966,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#1a1a1a',
-  },
-  themeToggle: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    padding: 10,
-    borderRadius: 25,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
   },
 });
 

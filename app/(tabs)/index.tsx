@@ -17,11 +17,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLanguages, Language } from '@/services/database';
 import { useTabBarHeight } from '@/hooks/useTabBarHeight';
+import { useTheme } from '../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width / 2 - 30;
 
 export default function HomeScreen() {
+  const { colors } = useTheme();
   const { height: tabBarHeight } = useTabBarHeight();
   const [languages, setLanguages] = useState<Language[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,10 +74,10 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>TalkyWalky</Text>
-        <Text style={styles.subtitle}>Learn a new language today</Text>
+        <Text style={[styles.title, { color: colors.text }]}>TalkyWalky</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Learn a new language today</Text>
       </View>
 
       <View style={styles.searchContainer}>
@@ -83,6 +85,7 @@ export default function HomeScreen() {
           style={[
             styles.searchWrapper,
             {
+              backgroundColor: colors.surface,
               transform: [
                 {
                   scale: searchAnim.interpolate({
@@ -98,29 +101,32 @@ export default function HomeScreen() {
             },
           ]}
         >
-          <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+          <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search languages..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             onFocus={handleSearchFocus}
             onBlur={handleSearchBlur}
-            placeholderTextColor={'#666'}
+            placeholderTextColor={colors.textSecondary}
           />
         </Animated.View>
       </View>
 
       {isLoading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#6441A5" />
-          <Text style={styles.loadingText}>Loading languages...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading languages...</Text>
         </View>
       ) : error ? (
         <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadLanguages}>
-            <Text style={styles.retryText}>Retry</Text>
+          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+          <TouchableOpacity 
+            style={[styles.retryButton, { backgroundColor: colors.surface }]} 
+            onPress={loadLanguages}
+          >
+            <Text style={[styles.retryText, { color: colors.text }]}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -133,7 +139,7 @@ export default function HomeScreen() {
             {filteredLanguages.map((lang) => (
               <TouchableOpacity
                 key={lang.code}
-                style={styles.card}
+                style={[styles.card, { backgroundColor: colors.surface }]}
                 onPress={() => handleLanguagePress(lang.code)}
               >
                 <LinearGradient
@@ -144,20 +150,20 @@ export default function HomeScreen() {
                 >
                   <View style={styles.cardContent}>
                     <View>
-                      <Text style={styles.languageName}>{lang.name}</Text>
-                      <Text style={styles.nativeName}>{lang.native_name}</Text>
-                      <View style={styles.difficultyBadge}>
-                        <Text style={styles.difficultyText}>{lang.difficulty}</Text>
+                      <Text style={[styles.languageName, { color: '#fff' }]}>{lang.name}</Text>
+                      <Text style={[styles.nativeName, { color: 'rgba(255,255,255,0.8)' }]}>{lang.native_name}</Text>
+                      <View style={[styles.difficultyBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                        <Text style={[styles.difficultyText, { color: '#fff' }]}>{lang.difficulty}</Text>
                       </View>
                     </View>
                     <View style={styles.statsContainer}>
                       <View style={styles.stat}>
-                        <Text style={styles.statValue}>{lang.total_lessons}</Text>
-                        <Text style={styles.statLabel}>Lessons</Text>
+                        <Text style={[styles.statValue, { color: '#fff' }]}>{lang.total_lessons}</Text>
+                        <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.8)' }]}>Lessons</Text>
                       </View>
                       <View style={styles.stat}>
-                        <Text style={styles.statValue}>{lang.total_words}</Text>
-                        <Text style={styles.statLabel}>Words</Text>
+                        <Text style={[styles.statValue, { color: '#fff' }]}>{lang.total_words}</Text>
+                        <Text style={[styles.statLabel, { color: 'rgba(255,255,255,0.8)' }]}>Words</Text>
                       </View>
                     </View>
                   </View>
@@ -174,7 +180,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   scrollView: {
     flex: 1,
@@ -190,11 +195,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1a1a1a',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
     marginTop: 5,
   },
   searchContainer: {
@@ -204,15 +207,10 @@ const styles = StyleSheet.create({
   searchWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: 12,
-    paddingHorizontal: 15,
-    height: 50,
+    padding: 12,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,
     elevation: 5,
   },
@@ -222,61 +220,47 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    paddingHorizontal: 5,
   },
   card: {
     width: CARD_WIDTH,
-    height: 180,
     marginBottom: 20,
     borderRadius: 16,
     overflow: 'hidden',
+    elevation: 5,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    elevation: 5,
   },
   cardGradient: {
-    flex: 1,
     padding: 15,
   },
   cardContent: {
-    flex: 1,
     justifyContent: 'space-between',
-  
+    minHeight: 150,
   },
   languageName: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
   },
   nativeName: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.9,
-    marginTop: 4,
+    fontSize: 14,
+    marginTop: 2,
   },
   difficultyBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginTop: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     alignSelf: 'flex-start',
-    marginTop: 8,
   },
   difficultyText: {
-    color: '#fff',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -291,12 +275,10 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
   },
   statLabel: {
     fontSize: 12,
-    color: '#fff',
-    opacity: 0.9,
+    marginTop: 2,
   },
   centerContainer: {
     flex: 1,
@@ -306,22 +288,18 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
   },
   errorText: {
     fontSize: 16,
-    color: '#dc3545',
     textAlign: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#6441A5',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   retryText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
