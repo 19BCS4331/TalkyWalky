@@ -17,6 +17,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import type { MaterialCommunityIcons as MaterialCommunityIconsType } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getProgress, getLanguageStats } from '../../services/progress';
 import { getUserStats, getAchievements, getLanguageProgress } from '../../services/gamification';
@@ -35,6 +36,21 @@ if (
 }
 
 const { width } = Dimensions.get('window');
+
+interface Achievement {
+  id: string;
+  earned_at: string | null;
+  progress: number;
+  achievement: {
+    id: string;
+    name: string;
+    description: string;
+    icon_name: keyof typeof MaterialCommunityIconsType.glyphMap;
+    xp_reward: number;
+    requirement_type: string;
+    requirement_value: number;
+  };
+}
 
 const ProfileScreen = () => {
   const { height: tabBarHeight } = useTabBarHeight();
@@ -74,12 +90,14 @@ const ProfileScreen = () => {
     xp_required: number;
     next_level_xp?: number;
   } | null>(null);
-  const [achievements, setAchievements] = useState<any[]>([]);
-  const [allAchievements, setAllAchievements] = useState<any[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [allAchievements, setAllAchievements] = useState<Achievement[]>([]);
   const [languageProgress, setLanguageProgress] = useState<any[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showAllAchievements, setShowAllAchievements] = useState(false);
+  const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
   const expandAnimation = useRef(new Animated.Value(0)).current;
+  const cardScale = useRef(new Animated.Value(1)).current;
 
   const scaleValue = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -369,6 +387,22 @@ const ProfileScreen = () => {
     outputRange: ['0deg', '180deg']
   });
 
+  const handleAchievementPress = (achievement: Achievement) => {
+    setSelectedAchievement(achievement);
+    Animated.sequence([
+      Animated.timing(cardScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true
+      }),
+      Animated.timing(cardScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true
+      })
+    ]).start();
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -383,281 +417,79 @@ const ProfileScreen = () => {
         style={styles.scrollView}
         contentContainerStyle={{ paddingBottom: tabBarHeight + 20 }}
       >
+        {/* Profile Header */}
         <View style={styles.header}>
           <LinearGradient
             colors={['#7928CA', '#FF0080']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
+            style={styles.headerGradient}
           >
             <BlurView intensity={20} style={styles.blurContainer}>
               {!isEditingProfile ? (
-                <Animated.View style={{ opacity: fadeAnim }}>
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={handleEditPress}
-                  >
+                <Animated.View style={[styles.profileInfo, { opacity: fadeAnim }]}>
+                  <View style={styles.avatarContainer}>
                     <LinearGradient
-                      colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
-                      style={styles.editButtonGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
+                      colors={['#FF0080', '#7928CA']}
+                      style={styles.avatarGradient}
                     >
-                      <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
-                        <MaterialCommunityIcons name="pencil" size={20} color="rgba(255,255,255,0.9)" />
-                      </Animated.View>
-                    </LinearGradient>
-                  </TouchableOpacity>
-
-                  <View style={styles.profileHeader}>
-                    <View style={styles.avatarContainer}>
-                      <LinearGradient
-                        colors={['#FF416C', '#FF4B2B']}
-                        style={styles.avatarGradient}
-                      >
-                        <Text style={styles.avatarText}>
-                          {userProfile.username ? userProfile.username[0].toUpperCase() : 'U'}
-                        </Text>
-                      </LinearGradient>
-                    </View>
-                    <View style={styles.userInfo}>
-                      <Text style={styles.username}>{userProfile.username || 'User'}</Text>
-                      <Text style={styles.fullName}>{userProfile.full_name || ''}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.levelContainer}>
-                    <View style={styles.levelHeader}>
-                      <Text style={styles.levelText}>Level {userStats.level}</Text>
-                      <Text style={styles.xpText}>{userStats.total_xp} XP</Text>
-                    </View>
-                    <LinearGradient
-                      colors={['#FF416C', '#FF4B2B']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.xpBar}
-                    >
-                      <LinearGradient
-                        style={[
-                          styles.xpProgress, 
-                          { 
-                            width: levelConfig && levelConfig.next_level_xp
-                              ? `${((userStats.total_xp - levelConfig.xp_required) / (levelConfig.next_level_xp - levelConfig.xp_required)) * 100}%` 
-                              : '0%' 
-                          }
-                        ]} 
-                        colors={['#4CAF50', '#8BC34A']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                      />
-                    </LinearGradient>
-                    {levelConfig?.next_level_xp && (
-                      <Text style={styles.xpToNext}>
-                        {levelConfig.next_level_xp - userStats.total_xp} XP to next level
+                      <Text style={styles.avatarText}>
+                        {userProfile.full_name?.[0]?.toUpperCase() || userProfile.username?.[0]?.toUpperCase() || '?'}
                       </Text>
-                    )}
-                  </View>
-
-                  <View style={styles.streakContainer}>
-                    <View style={styles.streakItem}>
-                      <MaterialCommunityIcons name="fire" size={24} color="#FF416C" />
-                      <Text style={styles.streakCount}>{userStats.current_streak}</Text>
-                      <Text style={styles.streakLabel}>Day Streak</Text>
-                    </View>
-                    <View style={styles.streakItem}>
-                      <MaterialCommunityIcons name="trophy" size={24} color="#FFD700" />
-                      <Text style={styles.streakCount}>{userStats.longest_streak}</Text>
-                      <Text style={styles.streakLabel}>Best Streak</Text>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity 
-                    style={styles.expandButton} 
-                    onPress={handleToggleExpand}
-                    activeOpacity={0.7}
-                  >
-                    <MaterialCommunityIcons 
-                      name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-                      size={24} 
-                      color="#fff" 
-                    />
-                  </TouchableOpacity>
-
-                  {isExpanded && (
-                    <Animated.View style={[
-                      styles.collapsibleContent,
-                      {
-                        opacity: expandAnimation,
-                        transform: [{
-                          translateY: expandAnimation.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [-20, 0]
-                          })
-                        }]
-                      }
-                    ]}>
-                      <View style={styles.languageProgress}>
-                        <Text style={styles.sectionTitle}>Language Progress</Text>
-                        <View style={styles.languageProgressBars}>
-                          {languageProgress.map((progress) => (
-                            <View key={progress.language} style={styles.languageProgressBar}>
-                              <View style={styles.languageProgressHeader}>
-                                <Text style={styles.languageProgressBarTitle}>
-                                  {progress.language}
-                                </Text>
-                                <Text style={styles.languageProgressBarStats}>
-                                  {progress.completedLessons}/{progress.totalLessons} lessons
-                                </Text>
-                              </View>
-                              <View style={styles.languageProgressBarFill}>
-                                <View 
-                                  style={[
-                                    styles.languageProgressBarFillInner, 
-                                    { width: `${progress.progressPercentage}%` }
-                                  ]} 
-                                />
-                                <Text style={styles.progressPercentage}>
-                                  {Math.round(progress.progressPercentage)}%
-                                </Text>
-                              </View>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-
-                      <View style={styles.achievementsContainer}>
-                        <View style={styles.sectionHeader}>
-                          <Text style={[styles.sectionTitle, { color: 'white',marginBottom: 0 }]}>Achievements</Text>
-                          <TouchableOpacity onPress={() => setShowAllAchievements(!showAllAchievements)}>
-                            <Text style={styles.seeAllText}>{showAllAchievements ? 'Show Earned' : 'See All'}</Text>
-                          </TouchableOpacity>
-                        </View>
-                        <ScrollView 
-                          horizontal 
-                          showsHorizontalScrollIndicator={false}
-                          contentContainerStyle={styles.achievementsScroll}
-                        >
-                          {(showAllAchievements ? allAchievements : achievements.slice(0, 5)).map((achievement) => (
-                            <View key={achievement.id} style={[
-                              styles.achievementItem,
-                              !achievement.earned_at && styles.unachievedItem
-                            ]}>
-                              <LinearGradient
-                                colors={achievement.earned_at ? ['#FF416C', '#FF4B2B'] : ['#666', '#444']}
-                                style={styles.achievementIcon}
-                              >
-                                <MaterialCommunityIcons 
-                                  name={achievement?.achievement?.icon_name || 'trophy'} 
-                                  size={24} 
-                                  color={achievement.earned_at ? '#fff' : 'rgba(255,255,255,0.7)'} 
-                                />
-                              </LinearGradient>
-                              <Text style={[
-                                styles.achievementName,
-                                !achievement.earned_at && styles.unachievedText
-                              ]}>
-                                {achievement?.achievement?.name || 'Achievement'}
-                              </Text>
-                              <Text style={[
-                                styles.achievementDescription,
-                                !achievement.earned_at && styles.unachievedText
-                              ]} numberOfLines={2}>
-                                {achievement?.achievement?.description || 'Complete tasks to earn this achievement'}
-                              </Text>
-                              {!achievement.earned_at && (
-                                <View style={styles.progressBar}>
-                                  <View style={[styles.progressFill, { width: `${achievement.progress}%` }]} />
-                                  <Text style={styles.progressText}>{achievement.progress}%</Text>
-                                </View>
-                              )}
-                              <Text style={[
-                                styles.achievementXP,
-                                !achievement.earned_at && styles.unachievedXP
-                              ]}>
-                                +{achievement?.achievement?.xp_reward || 0} XP
-                              </Text>
-                              <Text style={styles.achievementDate}>
-                                {achievement.earned_at 
-                                  ? new Date(achievement.earned_at).toLocaleDateString()
-                                  : `${achievement?.achievement?.requirement_value} ${achievement?.achievement?.requirement_type.replace(/_/g, ' ')}`
-                                }
-                              </Text>
-                            </View>
-                          ))}
-                          {(showAllAchievements ? allAchievements : achievements).length === 0 && (
-                            <View style={styles.noAchievements}>
-                              <Text style={styles.noAchievementsText}>
-                                Complete lessons to unlock achievements!
-                              </Text>
-                            </View>
-                          )}
-                        </ScrollView>
-                      </View>
-                    </Animated.View>
-                  )}
-
-                  
-
-                 
-                </Animated.View>
-              ) : (
-                <Animated.View 
-                  style={[
-                    styles.editForm,
-                    { opacity: formFadeAnim }
-                  ]}
-                >
-                  <View style={styles.editHeader}>
-                    <Text style={styles.editTitle}>Edit Profile</Text>
+                    </LinearGradient>
                     <TouchableOpacity
-                      style={styles.closeButton}
-                      onPress={handleCancelEdit}
+                      style={styles.editButton}
+                      onPress={handleEditPress}
                     >
-                      <MaterialCommunityIcons name="close" size={24} color="#fff" />
+                      <LinearGradient
+                        colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
+                        style={styles.editButtonGradient}
+                      >
+                        <MaterialCommunityIcons name="pencil" size={20} color="#fff" />
+                      </LinearGradient>
                     </TouchableOpacity>
                   </View>
-
-                  <View style={styles.formContainer}>
-                    <View style={styles.editInputContainer}>
-                      <Text style={styles.editLabel}>Full Name</Text>
-                      <TextInput
-                        style={styles.editInput}
-                        value={editForm.full_name}
-                        onChangeText={(text) => setEditForm(prev => ({ ...prev, full_name: text }))}
-                        placeholder="Enter your full name"
-                        placeholderTextColor="rgba(255,255,255,0.5)"
-                        autoCapitalize="words"
-                      />
+                  <Text style={styles.userName}>{userProfile.full_name || userProfile.username || 'User'}</Text>
+                  <View style={styles.statsRow}>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{userStats.level}</Text>
+                      <Text style={styles.statLabel}>Level</Text>
                     </View>
-
-                    <View style={styles.editInputContainer}>
-                      <Text style={styles.editLabel}>Username</Text>
-                      <TextInput
-                        style={styles.editInput}
-                        value={editForm.username}
-                        onChangeText={(text) => setEditForm(prev => ({ ...prev, username: text }))}
-                        placeholder="Choose a username"
-                        placeholderTextColor="rgba(255,255,255,0.5)"
-                        autoCapitalize="none"
-                      />
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{userStats.total_xp}</Text>
+                      <Text style={styles.statLabel}>Total XP</Text>
                     </View>
-
-                    <TouchableOpacity
-                      style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
-                      onPress={handleUpdateProfile}
-                      disabled={isLoading}
-                    >
-                      <LinearGradient
-                        colors={['#FF0080', '#7928CA']}
-                        style={styles.saveButtonGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                      >
-                        {isLoading ? (
-                          <ActivityIndicator color="#fff" size="small" />
-                        ) : (
-                          <Text style={styles.saveButtonText}>Save Changes</Text>
-                        )}
-                      </LinearGradient>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{userStats.current_streak}</Text>
+                      <Text style={styles.statLabel}>Day Streak</Text>
+                    </View>
+                  </View>
+                </Animated.View>
+              ) : (
+                <Animated.View style={[styles.editForm, { opacity: formFadeAnim }]}>
+                  <Text style={styles.editTitle}>Edit Profile</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Full Name"
+                    placeholderTextColor="rgba(255,255,255,0.5)"
+                    value={editForm.full_name}
+                    onChangeText={(text) => setEditForm(prev => ({ ...prev, full_name: text }))}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Username"
+                    placeholderTextColor="rgba(255,255,255,0.5)"
+                    value={editForm.username}
+                    onChangeText={(text) => setEditForm(prev => ({ ...prev, username: text }))}
+                  />
+                  <View style={styles.editButtons}>
+                    <TouchableOpacity style={styles.cancelButton} onPress={handleCancelEdit}>
+                      <Text style={styles.buttonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.saveButton} onPress={handleUpdateProfile}>
+                      <Text style={styles.buttonText}>Save</Text>
                     </TouchableOpacity>
                   </View>
                 </Animated.View>
@@ -666,8 +498,174 @@ const ProfileScreen = () => {
           </LinearGradient>
         </View>
 
-        <View style={styles.content}>
+        {/* Level Progress */}
+        <View style={styles.levelProgressContainer}>
+          <View style={styles.levelProgressHeader}>
+            <Text style={styles.levelProgressTitle}>Level {userStats.level}</Text>
+            <Text style={styles.levelProgressXP}>
+              {userStats.total_xp % (levelConfig?.xp_required || 1000)}/{levelConfig?.next_level_xp || 1000} XP
+            </Text>
+          </View>
+          <View style={styles.levelProgressBar}>
+            <LinearGradient
+              colors={['#7928CA', '#FF0080']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[
+                styles.levelProgressFill,
+                { width: `${(userStats.total_xp % (levelConfig?.xp_required || 1000)) / (levelConfig?.next_level_xp || 1000) * 100}%` }
+              ]}
+            />
+          </View>
         </View>
+
+        {/* Language Progress */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Language Progress</Text>
+          </View>
+          <View style={styles.languageCards}>
+            {languageProgress.map((progress) => (
+              <LinearGradient
+                key={progress.language}
+                colors={['#2a2a2a', '#333']}
+                style={styles.languageCard}
+              >
+                <View style={styles.languageCardHeader}>
+                  <Text style={styles.languageTitle}>{progress.language}</Text>
+                  <Text style={styles.lessonCount}>
+                    {progress.completedLessons}/{progress.totalLessons} lessons
+                  </Text>
+                </View>
+                <View style={styles.progressBarContainer}>
+                  <LinearGradient
+                    colors={['#7928CA', '#FF0080']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[
+                      styles.progressBarFill,
+                      { width: `${progress.progressPercentage}%` }
+                    ]}
+                  />
+                </View>
+                <Text style={styles.progressPercentage}>
+                  {Math.round(progress.progressPercentage)}% Complete
+                </Text>
+              </LinearGradient>
+            ))}
+          </View>
+        </View>
+
+        {/* Achievements */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Achievements</Text>
+            <TouchableOpacity 
+              style={styles.toggleButton}
+              onPress={() => setShowAllAchievements(!showAllAchievements)}
+            >
+              <Text style={styles.toggleButtonText}>
+                {showAllAchievements ? 'Show Earned' : 'See All'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.achievementsScroll}
+          >
+            {(showAllAchievements ? allAchievements : achievements).map((achievement) => (
+              <TouchableOpacity
+                key={achievement.id}
+                activeOpacity={0.9}
+                onPress={() => handleAchievementPress(achievement)}
+              >
+                <Animated.View style={[
+                  { transform: [{ scale: cardScale }] }
+                ]}>
+                  <LinearGradient
+                    colors={achievement.earned_at ? ['#2a2a2a', '#333'] : ['#222', '#282828']}
+                    style={[
+                      styles.achievementCard,
+                      !achievement.earned_at && styles.unachievedCard,
+                      selectedAchievement?.id === achievement.id && styles.selectedCard
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={achievement.earned_at ? ['#7928CA', '#FF0080'] : ['#666', '#444']}
+                      style={styles.achievementIconContainer}
+                    >
+                      <MaterialCommunityIcons 
+                        name={achievement?.achievement?.icon_name || 'trophy'} 
+                        size={24} 
+                        color={achievement.earned_at ? '#fff' : 'rgba(255,255,255,0.7)'} 
+                      />
+                    </LinearGradient>
+                    <Text style={[
+                      styles.achievementName,
+                      !achievement.earned_at && styles.unachievedText
+                    ]}>
+                      {achievement?.achievement?.name || 'Achievement'}
+                    </Text>
+                    <Text style={[
+                      styles.achievementDescription,
+                      !achievement.earned_at && styles.unachievedText
+                    ]} numberOfLines={2}>
+                      {achievement?.achievement?.description || 'Complete tasks to earn this achievement'}
+                    </Text>
+                    {!achievement.earned_at && (
+                      <View style={styles.achievementProgress}>
+                        <View style={styles.progressBarContainer}>
+                          <LinearGradient
+                            colors={['#7928CA', '#FF0080']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={[
+                              styles.progressBarFill,
+                              { width: `${achievement.progress}%` }
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.achievementProgressText}>{achievement.progress}% Complete</Text>
+                      </View>
+                    )}
+                    <Text style={[
+                      styles.achievementXP,
+                      !achievement.earned_at && styles.unachievedText
+                    ]}>
+                      +{achievement?.achievement?.xp_reward || 0} XP
+                    </Text>
+                    <Text style={[
+                      styles.achievementDate,
+                      !achievement.earned_at && styles.unachievedText
+                    ]}>
+                      {achievement.earned_at 
+                        ? new Date(achievement.earned_at).toLocaleDateString()
+                        : `${achievement?.achievement?.requirement_value} ${achievement?.achievement?.requirement_type.replace(/_/g, ' ')}`
+                      }
+                    </Text>
+                  </LinearGradient>
+                </Animated.View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Sign Out Button */}
+        <TouchableOpacity 
+          style={styles.signOutButton}
+          onPress={signOut}
+        >
+          <LinearGradient
+            colors={['#FF0080', '#7928CA']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.signOutGradient}
+          >
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -676,40 +674,29 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#1a1a1a',
   },
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-  },
   header: {
     width: '100%',
-    marginBottom: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
     overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    paddingTop: 10,
-  
+  },
+  headerGradient: {
+    padding: 20,
   },
   blurContainer: {
+    padding: 20,
+    borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  profileHeader: {
-    flexDirection: 'row',
+  profileInfo: {
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 20,
   },
   avatarContainer: {
-    marginRight: 20,
+    position: 'relative',
+    marginBottom: 15,
   },
   avatarGradient: {
     width: 80,
@@ -717,426 +704,271 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.4)',
   },
   avatarText: {
     fontSize: 32,
-    color: '#fff',
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0,0,0,0.2)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  username: {
-    fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
-    textShadowColor: 'rgba(0,0,0,0.2)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-  },
-  fullName: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
-    marginBottom: 4,
   },
   editButton: {
     position: 'absolute',
-    top: 30,
-    right: 10,
-    zIndex: 1,
+    bottom: 0,
+    right: -10,
+    backgroundColor: 'transparent',
   },
   editButtonGradient: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+    padding: 8,
+    borderRadius: 15,
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 15,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
+    width: '100%',
+    marginTop: 10,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   editForm: {
-    padding: 24,
-  },
-  editHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
+    width: '100%',
   },
   editTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.2)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-  },
-  closeButton: {
-    padding: 8,
-  },
-  formContainer: {
-    width: '100%',
-  },
-  editInputContainer: {
     marginBottom: 20,
+    textAlign: 'center',
   },
-  editLabel: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  editInput: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 12,
-    padding: 16,
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
     color: '#fff',
     fontSize: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)',
   },
-  saveButton: {
-    overflow: 'hidden',
-    borderRadius: 12,
-    marginTop: 24,
-  },
-  saveButtonGradient: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  saveButtonDisabled: {
-    opacity: 0.7,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.2)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-  },
-  content: {
-    paddingTop: 10,
-    paddingHorizontal: 20,
-  },
-  statsOverview: {
-    marginTop: 20,
+  editButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 30,
+    marginTop: 10,
   },
-  statCard: {
-    alignItems: 'center',
-    backgroundColor: '#fff',
+  cancelButton: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     padding: 15,
-    borderRadius: 15,
-    width: width / 3.5,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    borderRadius: 10,
+    marginRight: 10,
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 8,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  progressSection: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
-  },
-  progressCircle: {
-    alignItems: 'center',
-  },
-  progressContent: {
-    alignItems: 'center',
-  },
-  progressValue: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#6441A5',
-  },
-  progressLabel: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 5,
-  },
-  achievementsSection: {
-    marginBottom: 20,
-  },
-  achievementsContainer: {
-    marginTop: 20,
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#FF0080',
     padding: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 15,
+    borderRadius: 10,
+    marginLeft: 10,
   },
-  achievementsScroll: {
-    paddingVertical: 15,
-    paddingHorizontal: 5,
-  },
-  achievementItem: {
-    width: 200,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 12,
-    padding: 15,
-    marginRight: 15,
-  },
-  achievementIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  achievementName: {
+  buttonText: {
     color: '#fff',
+    textAlign: 'center',
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 5,
   },
-  achievementDescription: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
+  levelProgressContainer: {
+    margin: 20,
+    backgroundColor: '#2a2a2a',
+    borderRadius: 15,
+    padding: 15,
+  },
+  levelProgressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 10,
   },
-  achievementXP: {
-    color: '#FFD700',
-    fontSize: 14,
+  levelProgressTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
+    color: '#fff',
   },
-  achievementDate: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 12,
-    marginTop: 5,
+  levelProgressXP: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
   },
-  noAchievements: {
-    width: width - 60,
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+  levelProgressBar: {
+    height: 8,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 4,
+    overflow: 'hidden',
   },
-  noAchievementsText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 16,
-    textAlign: 'center',
+  levelProgressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  sectionContainer: {
+    margin: 20,
+    marginTop: 0,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 15,
   },
-  seeAllText: {
-    fontSize: 14,
-    color: 'pink',
-    fontWeight: '600',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  levelContainer: {
-    alignSelf: 'center',
-    width:'90%',
-    marginTop: 20,
-    padding: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-  },
-  levelHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  levelText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  xpText: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.8,
-  },
-  xpBar: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  xpProgress: {
-    height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  streakContainer: {
-    alignSelf: 'center',
-    width:'90%',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 20,
-    padding: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-  },
-  streakItem: {
-    alignItems: 'center',
-  },
-  streakCount: {
-    fontSize: 24,
+  sectionTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
-    marginVertical: 4,
   },
-  streakLabel: {
+  toggleButton: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  toggleButtonText: {
+    color: '#FF0080',
     fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
+    fontWeight: '600',
   },
-  languageProgress: {
-    alignSelf: 'center',
-    width:'90%',
-    marginTop: 24,
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  languageCards: {
+    gap: 15,
   },
-  languageProgressBars: {
-    gap: 20,
+  languageCard: {
+    padding: 15,
+    borderRadius: 15,
+    marginBottom: 10,
   },
-  languageProgressBar: {
-    marginBottom: 4,
-  },
-  languageProgressHeader: {
+  languageCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  languageTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  lessonCount: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
     marginBottom: 8,
   },
-  languageProgressBarTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1a1a1a',
-  },
-  languageProgressBarStats: {
-    fontSize: 14,
-    color: '#666666',
-  },
-  languageProgressBarFill: {
-    height: 15,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 6,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  languageProgressBarFillInner: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: '#4CAF50',
-    borderRadius: 6,
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
   },
   progressPercentage: {
-    position: 'absolute',
-    right: 5,
-    top:1,
-    fontSize: 10,
-    color: 'purple',
-    fontWeight: '500',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'right',
+  },
+  achievementsScroll: {
+    paddingVertical: 10,
+    paddingRight: 20,
+  },
+  achievementCard: {
+    width: 250,
+    padding: 15,
+    borderRadius: 15,
+    marginRight: 15,
+  },
+  unachievedCard: {
+    opacity: 0.7,
+  },
+  achievementIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  achievementName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  achievementDescription: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  achievementProgress: {
+    marginBottom: 12,
+  },
+  achievementProgressText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  achievementXP: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 8,
+  },
+  achievementDate: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+  },
+  unachievedText: {
+    opacity: 0.5,
+  },
+  selectedCard: {
+    borderWidth: 2,
+    borderColor: '#FF0080',
   },
   signOutButton: {
-    backgroundColor: '#f44336',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 16,
+    margin: 20,
+    marginTop: 10,
+    overflow: 'hidden',
+    borderRadius: 25,
+  },
+  signOutGradient: {
+    padding: 15,
     alignItems: 'center',
   },
   signOutText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
-  xpToNext: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  expandButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
-    marginTop: 15,
-    padding: 10,
-  },
-  expandText: {
-    color: '#fff',
-    marginRight: 8,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  collapsibleContent: {
-    overflow: 'hidden',
-    marginTop: 20,
-  },
-  unachievedItem: {
-    opacity: 0.8,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  unachievedText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-  },
-  unachievedXP: {
-    color: 'rgba(255, 215, 0, 0.5)',
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 2,
-    marginVertical: 8,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#FF416C',
-    borderRadius: 2,
-  },
-  progressText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 12,
-    marginTop: 4,
-    textAlign: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
   },
 });
 
