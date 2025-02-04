@@ -26,6 +26,7 @@ import { useTabBarHeight } from '@/hooks/useTabBarHeight';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Alert } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 
 // Enable LayoutAnimation for Android
 if (
@@ -55,6 +56,7 @@ interface Achievement {
 const ProfileScreen = () => {
   const { height: tabBarHeight } = useTabBarHeight();
   const { user, signOut } = useAuth();
+  const { colors, theme, toggleTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState<any>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
@@ -406,13 +408,13 @@ const ProfileScreen = () => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6441A5" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={{ paddingBottom: tabBarHeight + 20 }}
@@ -420,7 +422,7 @@ const ProfileScreen = () => {
         {/* Profile Header */}
         <View style={styles.header}>
           <LinearGradient
-            colors={['#7928CA', '#FF0080']}
+            colors={[colors.gradientStart, colors.gradientEnd]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.headerGradient}
@@ -430,10 +432,10 @@ const ProfileScreen = () => {
                 <Animated.View style={[styles.profileInfo, { opacity: fadeAnim }]}>
                   <View style={styles.avatarContainer}>
                     <LinearGradient
-                      colors={['#FF0080', '#7928CA']}
+                      colors={[colors.gradientStart, colors.gradientEnd]}
                       style={styles.avatarGradient}
                     >
-                      <Text style={styles.avatarText}>
+                      <Text style={[styles.avatarText, { color: '#fff' }]}>
                         {userProfile.full_name?.[0]?.toUpperCase() || userProfile.username?.[0]?.toUpperCase() || '?'}
                       </Text>
                     </LinearGradient>
@@ -449,27 +451,29 @@ const ProfileScreen = () => {
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
-                  <Text style={styles.userName}>{userProfile.full_name || userProfile.username || 'User'}</Text>
+                  <Text style={[styles.userName, { color: 'white' }]}>
+                    {userProfile.full_name || userProfile.username || 'User'}
+                  </Text>
                   <View style={styles.statsRow}>
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{userStats.level}</Text>
-                      <Text style={styles.statLabel}>Level</Text>
+                      <Text style={[styles.statValue, { color: 'white' }]}>{userStats.level}</Text>
+                      <Text style={[styles.statLabel, { color: 'white' }]}>Level</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{userStats.total_xp}</Text>
-                      <Text style={styles.statLabel}>Total XP</Text>
+                      <Text style={[styles.statValue, { color: 'white' }]}>{userStats.total_xp}</Text>
+                      <Text style={[styles.statLabel, { color: 'white' }]}>Total XP</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{userStats.current_streak}</Text>
-                      <Text style={styles.statLabel}>Day Streak</Text>
+                      <Text style={[styles.statValue, { color: 'white' }]}>{userStats.current_streak}</Text>
+                      <Text style={[styles.statLabel, { color: 'white' }]}>Day Streak</Text>
                     </View>
                   </View>
                 </Animated.View>
               ) : (
                 <Animated.View style={[styles.editForm, { opacity: formFadeAnim }]}>
-                  <Text style={styles.editTitle}>Edit Profile</Text>
+                  <Text style={[styles.editTitle, { color: 'white' }]}>Edit Profile</Text>
                   <TextInput
                     style={styles.input}
                     placeholder="Full Name"
@@ -486,10 +490,10 @@ const ProfileScreen = () => {
                   />
                   <View style={styles.editButtons}>
                     <TouchableOpacity style={styles.cancelButton} onPress={handleCancelEdit}>
-                      <Text style={styles.buttonText}>Cancel</Text>
+                      <Text style={[styles.buttonText, { color: 'white' }]}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.saveButton} onPress={handleUpdateProfile}>
-                      <Text style={styles.buttonText}>Save</Text>
+                      <Text style={[styles.buttonText, { color: 'white' }]}>Save</Text>
                     </TouchableOpacity>
                   </View>
                 </Animated.View>
@@ -499,16 +503,18 @@ const ProfileScreen = () => {
         </View>
 
         {/* Level Progress */}
-        <View style={styles.levelProgressContainer}>
+        <View style={[styles.levelProgressContainer,{backgroundColor: colors.surface}]}>
           <View style={styles.levelProgressHeader}>
-            <Text style={styles.levelProgressTitle}>Level {userStats.level}</Text>
-            <Text style={styles.levelProgressXP}>
+            <Text style={[styles.levelProgressTitle, { color: colors.text }]}>
+              Level {userStats.level}
+            </Text>
+            <Text style={[styles.levelProgressXP, { color: colors.textSecondary }]}>
               {userStats.total_xp % (levelConfig?.xp_required || 1000)}/{levelConfig?.next_level_xp || 1000} XP
             </Text>
           </View>
           <View style={styles.levelProgressBar}>
             <LinearGradient
-              colors={['#7928CA', '#FF0080']}
+              colors={[colors.gradientStart, colors.gradientEnd]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[
@@ -522,24 +528,24 @@ const ProfileScreen = () => {
         {/* Language Progress */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Language Progress</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Language Progress</Text>
           </View>
-          <View style={styles.languageCards}>
+          <View style={[styles.languageCards]}>
             {languageProgress.map((progress) => (
               <LinearGradient
                 key={progress.language}
-                colors={['#2a2a2a', '#333']}
+                colors={[colors.surface, colors.surface]}
                 style={styles.languageCard}
               >
                 <View style={styles.languageCardHeader}>
-                  <Text style={styles.languageTitle}>{progress.language}</Text>
-                  <Text style={styles.lessonCount}>
+                  <Text style={[styles.languageTitle, { color: colors.text }]}>{progress.language}</Text>
+                  <Text style={[styles.lessonCount, { color: colors.textSecondary }]}>
                     {progress.completedLessons}/{progress.totalLessons} lessons
                   </Text>
                 </View>
                 <View style={styles.progressBarContainer}>
                   <LinearGradient
-                    colors={['#7928CA', '#FF0080']}
+                    colors={[colors.gradientStart, colors.gradientEnd]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={[
@@ -548,7 +554,7 @@ const ProfileScreen = () => {
                     ]}
                   />
                 </View>
-                <Text style={styles.progressPercentage}>
+                <Text style={[styles.progressPercentage, { color: colors.textSecondary }]}>
                   {Math.round(progress.progressPercentage)}% Complete
                 </Text>
               </LinearGradient>
@@ -559,12 +565,12 @@ const ProfileScreen = () => {
         {/* Achievements */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Achievements</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Achievements</Text>
             <TouchableOpacity 
               style={styles.toggleButton}
               onPress={() => setShowAllAchievements(!showAllAchievements)}
             >
-              <Text style={styles.toggleButtonText}>
+              <Text style={[styles.toggleButtonText, { color: colors.text }]}>
                 {showAllAchievements ? 'Show Earned' : 'See All'}
               </Text>
             </TouchableOpacity>
@@ -585,15 +591,16 @@ const ProfileScreen = () => {
                   { transform: [{ scale: cardScale }] }
                 ]}>
                   <LinearGradient
-                    colors={achievement.earned_at ? ['#2a2a2a', '#333'] : ['#222', '#282828']}
+                    colors={achievement.earned_at ? colors.cardBackground : colors.cardBackgroundInactive}
                     style={[
                       styles.achievementCard,
                       !achievement.earned_at && styles.unachievedCard,
-                      selectedAchievement?.id === achievement.id && styles.selectedCard
+                      selectedAchievement?.id === achievement.id && styles.selectedCard,
+                      { borderColor: colors.secondary }
                     ]}
                   >
                     <LinearGradient
-                      colors={achievement.earned_at ? ['#7928CA', '#FF0080'] : ['#666', '#444']}
+                      colors={achievement.earned_at ? [colors.gradientStart, colors.gradientEnd] : ['#666', '#444']}
                       style={styles.achievementIconContainer}
                     >
                       <MaterialCommunityIcons 
@@ -604,13 +611,15 @@ const ProfileScreen = () => {
                     </LinearGradient>
                     <Text style={[
                       styles.achievementName,
-                      !achievement.earned_at && styles.unachievedText
+                      !achievement.earned_at && styles.unachievedText,
+                      { color: colors.text }
                     ]}>
                       {achievement?.achievement?.name || 'Achievement'}
                     </Text>
                     <Text style={[
                       styles.achievementDescription,
-                      !achievement.earned_at && styles.unachievedText
+                      !achievement.earned_at && styles.unachievedText,
+                      { color: colors.textSecondary }
                     ]} numberOfLines={2}>
                       {achievement?.achievement?.description || 'Complete tasks to earn this achievement'}
                     </Text>
@@ -618,7 +627,7 @@ const ProfileScreen = () => {
                       <View style={styles.achievementProgress}>
                         <View style={styles.progressBarContainer}>
                           <LinearGradient
-                            colors={['#7928CA', '#FF0080']}
+                            colors={[colors.gradientStart, colors.gradientEnd]}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={[
@@ -627,18 +636,22 @@ const ProfileScreen = () => {
                             ]}
                           />
                         </View>
-                        <Text style={styles.achievementProgressText}>{achievement.progress}% Complete</Text>
+                        <Text style={[styles.achievementProgressText, { color: colors.textSecondary }]}>
+                          {achievement.progress}% Complete
+                        </Text>
                       </View>
                     )}
                     <Text style={[
                       styles.achievementXP,
-                      !achievement.earned_at && styles.unachievedText
+                      !achievement.earned_at && styles.unachievedText,
+                      { color: colors.text }
                     ]}>
                       +{achievement?.achievement?.xp_reward || 0} XP
                     </Text>
                     <Text style={[
                       styles.achievementDate,
-                      !achievement.earned_at && styles.unachievedText
+                      !achievement.earned_at && styles.unachievedText,
+                      { color: colors.textSecondary }
                     ]}>
                       {achievement.earned_at 
                         ? new Date(achievement.earned_at).toLocaleDateString()
@@ -652,19 +665,15 @@ const ProfileScreen = () => {
           </ScrollView>
         </View>
 
-        {/* Sign Out Button */}
-        <TouchableOpacity 
-          style={styles.signOutButton}
-          onPress={signOut}
+        <TouchableOpacity
+          style={[styles.themeToggle, { backgroundColor: colors.surface }]}
+          onPress={toggleTheme}
         >
-          <LinearGradient
-            colors={['#FF0080', '#7928CA']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.signOutGradient}
-          >
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </LinearGradient>
+          <MaterialCommunityIcons 
+            name={theme === 'dark' ? 'weather-sunny' : 'weather-night'} 
+            size={24} 
+            color={colors.text} 
+          />
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -796,7 +805,6 @@ const styles = StyleSheet.create({
   },
   levelProgressContainer: {
     margin: 20,
-    backgroundColor: '#2a2a2a',
     borderRadius: 15,
     padding: 15,
   },
@@ -817,7 +825,7 @@ const styles = StyleSheet.create({
   },
   levelProgressBar: {
     height: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'lightgray',
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -876,7 +884,7 @@ const styles = StyleSheet.create({
   },
   progressBarContainer: {
     height: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'lightgray',
     borderRadius: 3,
     overflow: 'hidden',
     marginBottom: 8,
@@ -969,6 +977,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#1a1a1a',
+  },
+  themeToggle: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    padding: 10,
+    borderRadius: 25,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
 });
 

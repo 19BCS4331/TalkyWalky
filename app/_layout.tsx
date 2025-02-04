@@ -5,6 +5,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { initializeProgress } from '@/services/progress';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSegments } from 'expo-router';
+import { ThemeProvider } from '../context/ThemeContext';
 
 function RootLayoutNav() {
   const { user, loading } = useAuth();
@@ -40,9 +41,11 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <SafeAreaProvider>
-        <RootLayoutNav />
-      </SafeAreaProvider>
+      <ThemeProvider>
+        <SafeAreaProvider>
+          <RootLayoutNav />
+        </SafeAreaProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }
